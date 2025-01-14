@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "376303472743",
+    "project_id": "mortahilfatimaimdbapp",
+    "storage_bucket": "mortahilfatimaimdbapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:376303472743:android:c0dbf7aa12dd5321d804c2",
+        "android_client_info": {
+          "package_name": "edu.pmdm.mortahil_fatimaimdbapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCYMgYqNeleTY3K-rAKQwX2e8AlGsC1gms"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
