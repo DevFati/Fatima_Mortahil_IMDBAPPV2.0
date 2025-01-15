@@ -1,5 +1,7 @@
 package edu.pmdm.mortahil_fatimaimdbapp.models;
 
+import android.util.Log;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -8,6 +10,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import edu.pmdm.mortahil_fatimaimdbapp.api.IMDBApiClient;
 import edu.pmdm.mortahil_fatimaimdbapp.api.IMDBApiService;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -22,12 +25,13 @@ public class PopularMoviesResponse  {
         List<Movie> movies = new ArrayList<>();
         //Creamos un cliente HTTP con el que realizaremos las solicitudes
         OkHttpClient client = new OkHttpClient();
+        String apiKey= IMDBApiClient.getApiKey();
 
 
         Request request = new Request.Builder()
                 .url("https://imdb-com.p.rapidapi.com/title/get-top-meter?topMeterTitlesType=ALL")
                 .get()
-                .addHeader("x-rapidapi-key", "900835c791msh653763797096b27p1ee744jsn94da83b6b274")
+                .addHeader("x-rapidapi-key", apiKey)
                 .addHeader("x-rapidapi-host", "imdb-com.p.rapidapi.com")
                 .build();
         new Thread(() -> {
@@ -80,6 +84,12 @@ public class PopularMoviesResponse  {
                     String movieId = node.optString("id", "");
                     movies.add(new Movie(movieId, titulo, urlImagen, " ", fechaLanzamiento, Double.parseDouble(ranking),"imdb"));
                 }
+            }else if(response.code()==429){ //llamadas a la api terminadas
+                Log.e("API", "Límite de solicitudes alcanzado. Cambiando API Key.");
+                IMDBApiClient.switchApiKey(); // Cambia a la siguiente clave
+                // Reintenta con la nueva clave
+                 top10peliculas(callback);
+                 return;
             }
             //usamos el metodo de "cargarpeliculas" de la interfaz "IMDBApiService" para enviar los datos al callback
             callback.cargarpeliculas(movies);

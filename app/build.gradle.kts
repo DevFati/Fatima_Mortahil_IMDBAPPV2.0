@@ -71,6 +71,9 @@ dependencies {
 
     implementation(libs.gbutton)
 
+    implementation (libs.retrofit)
+    implementation (libs.converter.gson)
+
 
 
 

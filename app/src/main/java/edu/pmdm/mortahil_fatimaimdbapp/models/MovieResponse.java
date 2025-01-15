@@ -1,10 +1,13 @@
 package edu.pmdm.mortahil_fatimaimdbapp.models;
 
+import android.util.Log;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
 
+import edu.pmdm.mortahil_fatimaimdbapp.api.IMDBApiClient;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -14,11 +17,12 @@ import okhttp3.Response;
 public class MovieResponse {
     public Movie obtenerDetallesPelicula(String movieId) {
         OkHttpClient client = new OkHttpClient();
+        String apiKey= IMDBApiClient.getApiKey();
 
         Request request = new Request.Builder()
                 .url("https://imdb-com.p.rapidapi.com/title/get-overview?tconst=" + movieId) //añadimos el id de la peli especifica como parametro
                 .get()
-                .addHeader("x-rapidapi-key", "900835c791msh653763797096b27p1ee744jsn94da83b6b274")
+                .addHeader("x-rapidapi-key", apiKey)
                 .addHeader("x-rapidapi-host", "imdb-com.p.rapidapi.com")
                 .build();
 
@@ -65,6 +69,11 @@ public class MovieResponse {
 
                 //creamos un nuevo objeto movie que devolveremos con los datos obtenidos importante pasarle como valor api "imdb"
                 return new Movie(movieId, titulo, urlImagen, null, fechaLanzamiento, calificacion,"imdb");
+            }else if(response.code()==429){ //llamadas a la api terminadas
+                Log.e("API", "Límite de solicitudes alcanzado. Cambiando API Key.");
+                IMDBApiClient.switchApiKey(); // Cambia a la siguiente clave
+                // Reintenta con la nueva clave
+                return obtenerDetallesPelicula(movieId);
             }
         } catch (IOException | JSONException e) {
             e.printStackTrace();
