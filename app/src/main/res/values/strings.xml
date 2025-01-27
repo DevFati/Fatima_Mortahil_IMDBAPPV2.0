@@ -20,4 +20,11 @@
     <string name="buttonSms">Enviar por SMS</string>
     <string name="buttonCompartir">Compartir</string>
     <string name="buttonBuscar">Buscar</string>
+
+
+
+    <string name="facebook_app_id">1707255313543948</string>
+    <string name="fb_login_protocol_scheme">fb1707255313543948</string>
+    <string name="facebook_client_token">5f0ffed8c0fa3ac5e21e8638b60a56d</string>
+
 </resources>

@@ -74,6 +74,15 @@ dependencies {
     implementation (libs.retrofit)
     implementation (libs.converter.gson)
 
+    implementation ("com.facebook.android:facebook-android-sdk:18.0.0")
+    implementation ("androidx.appcompat:appcompat:1.7.0")
+    implementation ("com.google.android.material:material:1.8.0")
+    implementation ("com.facebook.android:facebook-android-sdk:16.12.0")
+
+
+
+
+
 
 
 

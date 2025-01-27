@@ -10,12 +10,15 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
+import com.facebook.AccessToken;
+import com.facebook.login.LoginManager;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
@@ -31,7 +34,8 @@ public class MainActivity extends AppCompatActivity {
     private AppBarConfiguration mAppBarConfiguration;
     private ActivityMainBinding binding;
     private GoogleSignInClient googleSignInClient;
-
+    private FirebaseUser user;
+    private String idProv;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -83,7 +87,9 @@ public class MainActivity extends AppCompatActivity {
         } else {
             navFoto.setImageResource(R.drawable.baseline_account_box_24); // Imagen por defecto si no hay foto
         }
-
+        user=FirebaseAuth.getInstance().getCurrentUser();
+        idProv=user.getProviderData().get(1).getProviderId();
+        System.out.println("provedorrrrr : "+idProv);
     }
 
     @Override
@@ -112,15 +118,36 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void cerrarSesion() {
-        // Método para cerrar sesión y leva al usuario de vuelta a la pantalla de inicio de session
-        if (googleSignInClient != null) {
+        // Cerrar sesión de Firebase
+        FirebaseAuth.getInstance().signOut();
+
+        // Cerrar sesión de Google
+        if (idProv.equals("google.com")) {
             googleSignInClient.signOut().addOnCompleteListener(task -> {
-                FirebaseAuth.getInstance().signOut();
+                // Cerrar sesión de Facebook
+                if (AccessToken.getCurrentAccessToken() != null) {
+                    LoginManager.getInstance().logOut();
+                }
+
+                // Redirigir al usuario a la pantalla de inicio de sesión
                 Intent intent = new Intent(MainActivity.this, LoginActivity.class);
                 startActivity(intent);
                 finish();
             });
+        } else if(idProv.equals("facebook.com")) {
+            // Si no hay sesión de Google, cerrar sesión de Facebook directamente
+            if (AccessToken.getCurrentAccessToken() != null) {
+                LoginManager.getInstance().logOut();
+                System.out.println("entraaaaa ifffff ");
+
+            }
+
+            // Redirigir al usuario a la pantalla de inicio de sesión
+            Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+            startActivity(intent);
+            finish();
         }
     }
+
 
 }
