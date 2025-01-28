@@ -1,5 +1,7 @@
 package edu.pmdm.mortahil_fatimaimdbapp.ui.favorite;
 
+import static android.content.Context.MODE_PRIVATE;
+
 import android.Manifest;
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
@@ -30,6 +32,7 @@ import edu.pmdm.mortahil_fatimaimdbapp.databinding.FragmentGalleryBinding;
 import edu.pmdm.mortahil_fatimaimdbapp.models.Movie;
 import edu.pmdm.mortahil_fatimaimdbapp.models.MovieResponse;
 import edu.pmdm.mortahil_fatimaimdbapp.models.MovieSearchResponse;
+import edu.pmdm.mortahil_fatimaimdbapp.sync.FavoritesSync;
 
 public class FavoriteFragment extends Fragment {
 
@@ -41,7 +44,7 @@ public class FavoriteFragment extends Fragment {
 
     private ActivityResultLauncher<String> solicitarPermisoBluetoothConnectLauncher;
     private ActivityResultLauncher<Intent> activarBluetoothLauncher;
-
+    private FavoritesSync favSync;
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentGalleryBinding.inflate(inflater, container, false);
@@ -62,7 +65,12 @@ public class FavoriteFragment extends Fragment {
     }
 
     private void configurarRecyclerView() {
-        adapter = new MovieAdapter(peliculas, getContext(), true);
+        String userId = requireContext().getSharedPreferences("UserPrefs", MODE_PRIVATE)
+                .getString("USER_ID", null);
+
+        favSync = new FavoritesSync(getContext(), userId);
+
+        adapter = new MovieAdapter(peliculas, getContext(), true,favSync);
         binding.recyclerViewFavoritos.setLayoutManager(new LinearLayoutManager(getContext()));
         binding.recyclerViewFavoritos.setAdapter(adapter);
     }
@@ -167,7 +175,7 @@ public class FavoriteFragment extends Fragment {
 
     //Obtenemos el id del usuario desde sharedpreferences
     private void cargarFavoritos() {
-        String userId = requireContext().getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+        String userId = requireContext().getSharedPreferences("UserPrefs", MODE_PRIVATE)
                 .getString("USER_ID", null);
         List<Pair<String, String>> favoritos = gestorFavoritos.obtenerFavoritosIdsYSources(userId);
         peliculas.clear();

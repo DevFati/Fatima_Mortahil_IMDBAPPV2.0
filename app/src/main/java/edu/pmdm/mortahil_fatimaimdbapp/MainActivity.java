@@ -28,6 +28,7 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.appcompat.app.AppCompatActivity;
 
 import edu.pmdm.mortahil_fatimaimdbapp.databinding.ActivityMainBinding;
+import edu.pmdm.mortahil_fatimaimdbapp.sync.FavoritesSync;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -36,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
     private GoogleSignInClient googleSignInClient;
     private FirebaseUser user;
     private String idProv;
+    private FavoritesSync favSync;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -90,6 +92,10 @@ public class MainActivity extends AppCompatActivity {
         user=FirebaseAuth.getInstance().getCurrentUser();
         idProv=user.getProviderData().get(1).getProviderId();
         System.out.println("provedorrrrr : "+idProv);
+        favSync=new FavoritesSync(this,user.getUid());
+
+        //favSync.sincronizarHaciaFirestore();
+        favSync.sincronizarDesdeFirestore();
     }
 
     @Override

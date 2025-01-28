@@ -16,11 +16,12 @@ import java.util.List;
 import edu.pmdm.mortahil_fatimaimdbapp.adapters.MovieAdapter;
 import edu.pmdm.mortahil_fatimaimdbapp.databinding.ActivityResultsBinding;
 import edu.pmdm.mortahil_fatimaimdbapp.models.Movie;
+import edu.pmdm.mortahil_fatimaimdbapp.sync.FavoritesSync;
 
 public class ResultsActivity extends AppCompatActivity {
     private ActivityResultsBinding binding;
     private List<Movie> peliculas;
-
+    private FavoritesSync favSync;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -49,9 +50,12 @@ public class ResultsActivity extends AppCompatActivity {
         // Configurar GridLayoutManager para mostrar las películas en 2 columnas
         GridLayoutManager gridLayoutManager = new GridLayoutManager(this, 2);
         binding.recyclerViewResultados.setLayoutManager(gridLayoutManager);
+        String userId = getSharedPreferences("UserPrefs", MODE_PRIVATE).getString("USER_ID", null);
+
+        favSync = new FavoritesSync(this, userId);
 
         // Configurar el adaptador
-        MovieAdapter adapter = new MovieAdapter(peliculas, this,false);
+        MovieAdapter adapter = new MovieAdapter(peliculas, this,false, favSync );
         binding.recyclerViewResultados.setAdapter(adapter);
     }
 }

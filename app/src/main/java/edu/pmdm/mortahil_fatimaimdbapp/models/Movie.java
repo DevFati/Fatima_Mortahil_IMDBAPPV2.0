@@ -54,6 +54,10 @@ public class Movie implements Parcelable {
         }
     };
 
+    public Movie() {
+
+    }
+
     @Override
     public void writeToParcel(Parcel dest, int flags) {
         dest.writeString(id);

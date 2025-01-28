@@ -1,5 +1,7 @@
 package edu.pmdm.mortahil_fatimaimdbapp.ui.top10;
 
+import static android.content.Context.MODE_PRIVATE;
+
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -18,12 +20,13 @@ import edu.pmdm.mortahil_fatimaimdbapp.api.IMDBApiService;
 import edu.pmdm.mortahil_fatimaimdbapp.databinding.FragmentHomeBinding;
 import edu.pmdm.mortahil_fatimaimdbapp.models.Movie;
 import edu.pmdm.mortahil_fatimaimdbapp.models.PopularMoviesResponse;
+import edu.pmdm.mortahil_fatimaimdbapp.sync.FavoritesSync;
 
 public class Top10Fragment extends Fragment {
     private FragmentHomeBinding binding;
     private MovieAdapter adapter;
     private List<Movie> peliculas;
-
+    private FavoritesSync favSync;
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentHomeBinding.inflate(inflater, container, false);
@@ -31,7 +34,12 @@ public class Top10Fragment extends Fragment {
         // Configuración del RecyclerView con GridLayoutManager
         binding.recyclerViewPeliculas.setLayoutManager(new GridLayoutManager(requireContext(), 2));
         peliculas = new ArrayList<>();
-        adapter = new MovieAdapter(peliculas, requireContext(), false);
+        String userId = requireContext().getSharedPreferences("UserPrefs", MODE_PRIVATE)
+                .getString("USER_ID", null);
+
+        favSync = new FavoritesSync(getContext(), userId);
+
+        adapter = new MovieAdapter(peliculas, requireContext(), false,favSync);
 
         binding.recyclerViewPeliculas.setAdapter(adapter);
 

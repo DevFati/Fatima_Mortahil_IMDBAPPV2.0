@@ -221,19 +221,22 @@ public class LoginActivity extends AppCompatActivity {
             if (task.isSuccessful()) {
                 // Solicitud a la API Graph para obtener la información del usuario
                 GraphRequest request = GraphRequest.newMeRequest(token, (object, response) -> {
+                    FirebaseUser usuario = autenticacion.getCurrentUser();
+
                     try {
-                        // Verifica y obtiene los datos del usuario
+                        // Verificamos y obtienemos los datos del usuario
                         String nombre = object.optString("name", "Usuario de Facebook");
                         String email = object.optString("email", "Correo no disponible");
 
-                        // Obtén la URL correcta de la foto de perfil desde la respuesta JSON
+                        // Obténemos la URL correcta de la foto de perfil desde la respuesta JSON
                         String fotoPerfilUrl = object.getJSONObject("picture").getJSONObject("data").getString("url");
 
-                        // Guarda los datos en SharedPreferences o úsalos según sea necesario
+                        // Guardamos los datos en SharedPreferences
                         getSharedPreferences("UserPrefs", MODE_PRIVATE).edit()
                                 .putString("nombre", nombre)
                                 .putString("correo", "Conectado con Facebook")
                                 .putString("foto", fotoPerfilUrl)
+                                .putString("USER_ID", usuario.getUid()) // Guarda el UID del usuario
                                 .apply();
 
                         Log.d("FacebookLogin", "Nombre: " + nombre);
@@ -250,7 +253,7 @@ public class LoginActivity extends AppCompatActivity {
                     }
                 });
 
-                // Configura los parámetros que deseas obtener
+                // Configuramos los parámetros que  obtendremos
                 Bundle parameters = new Bundle();
                 parameters.putString("fields", "id,name,email,picture.width(500).height(500)");
                 request.setParameters(parameters);
