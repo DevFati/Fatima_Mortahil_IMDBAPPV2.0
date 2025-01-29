@@ -5,7 +5,6 @@ import static android.content.Context.MODE_PRIVATE;
 import android.Manifest;
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -27,7 +26,7 @@ import com.google.gson.JsonObject;
 import java.util.ArrayList;
 import java.util.List;
 import edu.pmdm.mortahil_fatimaimdbapp.adapters.MovieAdapter;
-import edu.pmdm.mortahil_fatimaimdbapp.database.FavoritesManager;
+import edu.pmdm.mortahil_fatimaimdbapp.database.DatabaseManager;
 import edu.pmdm.mortahil_fatimaimdbapp.databinding.FragmentGalleryBinding;
 import edu.pmdm.mortahil_fatimaimdbapp.models.Movie;
 import edu.pmdm.mortahil_fatimaimdbapp.models.MovieResponse;
@@ -39,7 +38,7 @@ public class FavoriteFragment extends Fragment {
     private FragmentGalleryBinding binding;
     private MovieAdapter adapter; // Adaptador para la lista de películas en el RecyclerView
     private List<Movie> peliculas; //Lista de peliculas favoritas
-    private FavoritesManager gestorFavoritos; //
+    private DatabaseManager gestorFavoritos; //
     private BluetoothAdapter bluetoothAdapter;
 
     private ActivityResultLauncher<String> solicitarPermisoBluetoothConnectLauncher;
@@ -49,7 +48,7 @@ public class FavoriteFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentGalleryBinding.inflate(inflater, container, false);
         peliculas = new ArrayList<>(); //inicializamos la lista de peliculas favoritas
-        gestorFavoritos = new FavoritesManager(requireContext());
+        gestorFavoritos = new DatabaseManager(requireContext());
 
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 

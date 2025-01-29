@@ -2,7 +2,6 @@ package edu.pmdm.mortahil_fatimaimdbapp;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Menu;
@@ -16,7 +15,6 @@ import com.facebook.login.LoginManager;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
-import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -28,13 +26,7 @@ import androidx.navigation.ui.NavigationUI;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.appcompat.app.AppCompatActivity;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
-
-import edu.pmdm.mortahil_fatimaimdbapp.database.UserManager;
 import edu.pmdm.mortahil_fatimaimdbapp.databinding.ActivityMainBinding;
-import edu.pmdm.mortahil_fatimaimdbapp.models.User;
 import edu.pmdm.mortahil_fatimaimdbapp.sync.FavoritesSync;
 import edu.pmdm.mortahil_fatimaimdbapp.utils.AppLifecycleManager;
 import androidx.lifecycle.ProcessLifecycleOwner;

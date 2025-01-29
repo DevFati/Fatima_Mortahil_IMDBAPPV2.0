@@ -18,7 +18,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-import edu.pmdm.mortahil_fatimaimdbapp.database.UserDatabaseHelper;
+import edu.pmdm.mortahil_fatimaimdbapp.database.DatabaseHelper;
+import edu.pmdm.mortahil_fatimaimdbapp.database.DatabaseManager;
 
 public class AppLifecycleManager implements LifecycleObserver {
 
@@ -32,7 +33,7 @@ public class AppLifecycleManager implements LifecycleObserver {
     private boolean isActivityChangingConfigurations = false;
 
     private final Context context;
-    private final UserDatabaseHelper databaseHelper;
+    private final DatabaseHelper databaseHelper;
     private final Handler logoutHandler = new Handler();
 
     private final Runnable logoutRunnable = () -> {
@@ -46,7 +47,7 @@ public class AppLifecycleManager implements LifecycleObserver {
 
     public AppLifecycleManager(Context context) {
         this.context = context;
-        this.databaseHelper = new UserDatabaseHelper(context);
+        this.databaseHelper = new DatabaseHelper(context);
     }
 
     @OnLifecycleEvent(androidx.lifecycle.Lifecycle.Event.ON_START)

@@ -16,7 +16,7 @@ import java.util.List;
 
 import edu.pmdm.mortahil_fatimaimdbapp.MovieDetailsActivity;
 import edu.pmdm.mortahil_fatimaimdbapp.api.IMDBApiService;
-import edu.pmdm.mortahil_fatimaimdbapp.database.FavoritesManager;
+import edu.pmdm.mortahil_fatimaimdbapp.database.DatabaseManager;
 import edu.pmdm.mortahil_fatimaimdbapp.databinding.ItemMovieBinding;
 import edu.pmdm.mortahil_fatimaimdbapp.models.Movie;
 import edu.pmdm.mortahil_fatimaimdbapp.models.MovieOverviewResponse;
@@ -130,8 +130,8 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
                             .getString("USER_ID", null);
 
 
-                    FavoritesManager gestorFavoritos = new FavoritesManager(context);
-                    gestorFavoritos.eliminarPorUsuario(movie.getId(), userId);
+                    DatabaseManager gestorFavoritos = new DatabaseManager(context);
+                    gestorFavoritos.eliminarFavorito(movie.getId(), userId);
 
                     // Eliminar de la lista y notificar al adaptador
                     peliculas.remove(position);
@@ -148,8 +148,8 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
                     String userId = context.getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
                             .getString("USER_ID", null);
 
-                    FavoritesManager gestorFavoritos = new FavoritesManager(context);
-                    boolean agregado = gestorFavoritos.agregar(movie.getId(), userId, movie.getApi());
+                    DatabaseManager gestorFavoritos = new DatabaseManager(context);
+                    boolean agregado = gestorFavoritos.agregarFavorito(movie.getId(), userId, movie.getApi());
                     if (agregado) {
                         favSync.agregarFavorito(movie);
                         Toast.makeText(context, "Agregada a favoritos: " + movie.getTitulo(), Toast.LENGTH_SHORT).show();
