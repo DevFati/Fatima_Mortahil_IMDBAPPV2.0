@@ -56,6 +56,8 @@ dependencies {
     implementation(libs.navigation.ui)
     implementation(libs.firebase.auth)
     implementation(libs.activity)
+    implementation(libs.firebase.firestore)
+    implementation(libs.lifecycle.process)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
@@ -73,6 +75,20 @@ dependencies {
 
     implementation (libs.retrofit)
     implementation (libs.converter.gson)
+
+    implementation (libs.android.facebook.android.sdk)
+    implementation (libs.appcompat)
+    implementation (libs.material.v180)
+    implementation (libs.android.facebook.android.sdk)
+
+
+
+    implementation (libs.lifecycle.runtime)
+
+
+
+
+
 
 
 

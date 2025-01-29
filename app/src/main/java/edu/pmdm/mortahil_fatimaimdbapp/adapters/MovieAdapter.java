@@ -5,11 +5,15 @@ import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.ViewGroup;
 import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.bumptech.glide.Glide;
+
 import java.util.List;
+
 import edu.pmdm.mortahil_fatimaimdbapp.MovieDetailsActivity;
 import edu.pmdm.mortahil_fatimaimdbapp.api.IMDBApiService;
 import edu.pmdm.mortahil_fatimaimdbapp.database.FavoritesManager;
@@ -17,6 +21,7 @@ import edu.pmdm.mortahil_fatimaimdbapp.databinding.ItemMovieBinding;
 import edu.pmdm.mortahil_fatimaimdbapp.models.Movie;
 import edu.pmdm.mortahil_fatimaimdbapp.models.MovieOverviewResponse;
 import edu.pmdm.mortahil_fatimaimdbapp.models.MovieSearchResponse;
+import edu.pmdm.mortahil_fatimaimdbapp.sync.FavoritesSync;
 
 
 public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHolder> {
@@ -25,12 +30,15 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
     private Context context; //contexto
     private boolean estamosEnFavoritos; //usamos este boolean para indicar cuando el adaptador se use en
     //el fragment de favoritos
+    private FavoritesSync favSync;
 
 
-    public MovieAdapter(List<Movie> peliculas, Context context, boolean estamosEnFavoritos) {
+    public MovieAdapter(List<Movie> peliculas, Context context, boolean estamosEnFavoritos, FavoritesSync favSync) {
         this.peliculas = peliculas;
         this.context = context;
         this.estamosEnFavoritos = estamosEnFavoritos;
+        this.favSync = favSync; // Inicializamos aquí
+
 
     }
 
@@ -45,7 +53,7 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
     public void onBindViewHolder(@NonNull MovieViewHolder holder, int position) {
         //Obtenemos la pelicula en la posicion actual y llamamos al metodo "bind" del ViewHolder
         Movie movie = peliculas.get(position);
-        holder.bind(movie,position);
+        holder.bind(movie, position);
     }
 
     @Override
@@ -92,7 +100,8 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
                                     context.startActivity(intent);
                                 });
                             }
-                        });} else if ("tmdb".equals(movie.getApi())) {
+                        });
+                    } else if ("tmdb".equals(movie.getApi())) {
                         // Manejo de descripción para TMDb
                         MovieSearchResponse movieSearchResponse = new MovieSearchResponse();
                         Movie updatedMovie = movieSearchResponse.obtenerDetallesPelicula(movie.getId());
@@ -108,6 +117,8 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
                         });
                     }
 
+
+
                 }).start(); //ejecutamos la lógica en un hilo separado para no bloquear la interfaz haciendolo directamente
                 //en el hilo principal
             });
@@ -118,6 +129,7 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
                     String userId = context.getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
                             .getString("USER_ID", null);
 
+
                     FavoritesManager gestorFavoritos = new FavoritesManager(context);
                     gestorFavoritos.eliminarPorUsuario(movie.getId(), userId);
 
@@ -125,11 +137,12 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
                     peliculas.remove(position);
                     notifyItemRemoved(position);
                     notifyItemRangeChanged(position, peliculas.size());
-
+                    favSync.eliminarFavorito(movie);
                     Toast.makeText(context, "Eliminado de favoritos: " + movie.getTitulo(), Toast.LENGTH_SHORT).show();
+
                     return true;
                 });
-            }else{
+            } else {
                 // Configuración del onLongClickListener para agregar a favoritos al pulsar longclick en cualquier otra actividad o fragment que no sea el de favoritos
                 binding.getRoot().setOnLongClickListener(v -> {
                     String userId = context.getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
@@ -138,6 +151,7 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
                     FavoritesManager gestorFavoritos = new FavoritesManager(context);
                     boolean agregado = gestorFavoritos.agregar(movie.getId(), userId, movie.getApi());
                     if (agregado) {
+                        favSync.agregarFavorito(movie);
                         Toast.makeText(context, "Agregada a favoritos: " + movie.getTitulo(), Toast.LENGTH_SHORT).show();
                     } else {
                         Toast.makeText(context, "Ya está en tus favoritos.", Toast.LENGTH_SHORT).show();

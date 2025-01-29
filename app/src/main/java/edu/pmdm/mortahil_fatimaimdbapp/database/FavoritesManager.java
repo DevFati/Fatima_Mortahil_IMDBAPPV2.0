@@ -108,4 +108,22 @@ public class FavoritesManager {
 
         return favoritos; //retornamos la lista de pares con las pelis favoritas de cada usuario
     }
+
+    public void limpiarFavoritosUsuario(String userId) {
+        SQLiteDatabase db = baseDatos.getWritableDatabase();
+        try {
+            db.delete(FavoritesDatabaseHelper.tablaF,
+                    FavoritesDatabaseHelper.columna_usuario + "=?",
+                    new String[]{userId});
+            System.out.println("Todos los favoritos del usuario han sido eliminados.");
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.out.println("Error al eliminar los favoritos del usuario: " + e.getMessage());
+        } finally {
+            db.close();
+        }
+    }
+
+
+
 }
