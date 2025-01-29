@@ -57,6 +57,7 @@ dependencies {
     implementation(libs.firebase.auth)
     implementation(libs.activity)
     implementation(libs.firebase.firestore)
+    implementation(libs.lifecycle.process)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
@@ -75,10 +76,15 @@ dependencies {
     implementation (libs.retrofit)
     implementation (libs.converter.gson)
 
-    implementation ("com.facebook.android:facebook-android-sdk:18.0.0")
-    implementation ("androidx.appcompat:appcompat:1.7.0")
-    implementation ("com.google.android.material:material:1.8.0")
-    implementation ("com.facebook.android:facebook-android-sdk:16.12.0")
+    implementation (libs.android.facebook.android.sdk)
+    implementation (libs.appcompat)
+    implementation (libs.material.v180)
+    implementation (libs.android.facebook.android.sdk)
+
+
+
+    implementation (libs.lifecycle.runtime)
+
 
 
 

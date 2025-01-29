@@ -11,9 +11,10 @@ public class RapidApiKeyManager {
 
     public RapidApiKeyManager(){
         //Añadimos nuestras claves de RapidAPI
-        apiKeys.add("b2f9469579msha213c07b8130c1ap1e4793jsn5b9c97c7b358");
+        apiKeys.add("b2f9469579msha213c07b8130c1ap1e4793jsn5b9c97c7b358"); //esta ya no funciona tampoco
 
         apiKeys.add("9b3f010a5cmsh314da0c0807bc6ep1c4cadjsn48c27286ae89"); //esta no funciona peticiones gastadas
+        apiKeys.add("963059d623mshd1e5228808feb4bp1a35b4jsn80ca139d036b");
 
     }
 
