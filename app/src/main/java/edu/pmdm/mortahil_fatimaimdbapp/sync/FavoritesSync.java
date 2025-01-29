@@ -1,10 +1,8 @@
 package edu.pmdm.mortahil_fatimaimdbapp.sync;
 
 import android.content.Context;
-import android.os.Build;
 import android.widget.Toast;
 
-import androidx.annotation.RequiresApi;
 import androidx.core.util.Pair;
 
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -12,13 +10,13 @@ import com.google.firebase.firestore.QueryDocumentSnapshot;
 
 import java.util.List;
 
-import edu.pmdm.mortahil_fatimaimdbapp.database.FavoritesManager;
+import edu.pmdm.mortahil_fatimaimdbapp.database.DatabaseManager;
 import edu.pmdm.mortahil_fatimaimdbapp.models.Movie;
 
 public class FavoritesSync {
 
     private final FirebaseFirestore firestore;
-    private final FavoritesManager favoritesManager;
+    private final DatabaseManager favoritesManager;
     private final Context context;
     private final String userId;
 
@@ -26,7 +24,7 @@ public class FavoritesSync {
         this.context = context;
         this.userId = userId;
         this.firestore = FirebaseFirestore.getInstance();
-        this.favoritesManager = new FavoritesManager(context);
+        this.favoritesManager = new DatabaseManager(context);
     }
 
     /**
@@ -41,7 +39,7 @@ public class FavoritesSync {
                     for (QueryDocumentSnapshot document : querySnapshot) {
                         Movie movie = document.toObject(Movie.class);
                         if (movie != null) {
-                            favoritesManager.agregar(movie.getId(), userId, movie.getApi());
+                            favoritesManager.agregarFavorito(movie.getId(), userId, movie.getApi());
                         }
                     }
 
@@ -93,7 +91,7 @@ public class FavoritesSync {
                 });
 
         // Eliminar de la base de datos local
-        favoritesManager.eliminarPorUsuario(movie.getId(), userId);
+        favoritesManager.eliminarFavorito(movie.getId(), userId);
     }
 
     /**
@@ -115,7 +113,7 @@ public class FavoritesSync {
                 });
 
         // Agregar a la base de datos local
-        favoritesManager.agregar(movie.getId(), userId, movie.getApi());
+        favoritesManager.agregarFavorito(movie.getId(), userId, movie.getApi());
     }
 }
 
