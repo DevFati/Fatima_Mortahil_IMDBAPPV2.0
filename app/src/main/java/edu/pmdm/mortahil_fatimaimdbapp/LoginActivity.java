@@ -158,6 +158,9 @@ public class LoginActivity extends AppCompatActivity {
 
     }
 
+    //Lo que hago aqui es el registro por mail, despues de que el usuario meta los datso correctamente, le logueamos directamente
+    //he toamdo dicha decision porque es lo que suele ocurrir en las apps hoy en dia. Despues de un registro exitoso, te logueas automaticamnete.
+
     private void registroMail() {
         String email = enlaceVista.emailEditText.getText().toString().trim();
         String password = enlaceVista.passwordEditText.getText().toString().trim();
@@ -192,6 +195,7 @@ public class LoginActivity extends AppCompatActivity {
     }
 
 
+    //Metodo que permite al usuario loguearse con un mail y contraseña.
     private void loginMail() {
         String email = enlaceVista.emailEditText.getText().toString().trim();
         String password = enlaceVista.passwordEditText.getText().toString().trim();
