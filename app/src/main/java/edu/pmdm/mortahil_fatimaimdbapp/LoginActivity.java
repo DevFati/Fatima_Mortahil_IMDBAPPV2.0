@@ -150,6 +150,77 @@ public class LoginActivity extends AppCompatActivity {
         }
 
 
+        //Botón de registro
+        enlaceVista.registerButton.setOnClickListener(v -> registroMail());
+
+        // Botón de Inicio de Sesión
+        enlaceVista.loginButton.setOnClickListener(v -> loginMail());
+
+    }
+
+    private void registroMail() {
+        String email = enlaceVista.emailEditText.getText().toString().trim();
+        String password = enlaceVista.passwordEditText.getText().toString().trim();
+
+        if (email.isEmpty() || password.isEmpty()) {
+            Toast.makeText(this, "Por favor, completa todos los campos", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        autenticacion.createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        FirebaseUser usuario = autenticacion.getCurrentUser();
+                        if (usuario != null) {
+                            // Guardar datos en SharedPreferences
+                            getSharedPreferences("UserPrefs", MODE_PRIVATE).edit()
+                                    .putString("nombre", "")
+                                    .putString("correo", usuario.getEmail() != null ? usuario.getEmail() : email)
+                                    .putString("foto", "")
+                                    .putString("USER_ID", usuario.getUid())
+                                    .apply();
+
+                            Toast.makeText(this, "Registro exitoso", Toast.LENGTH_SHORT).show();
+                            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                            startActivity(intent);
+                            finish();
+                        }
+                    } else {
+                        Toast.makeText(this, "Error en el registro: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+
+    private void loginMail() {
+        String email = enlaceVista.emailEditText.getText().toString().trim();
+        String password = enlaceVista.passwordEditText.getText().toString().trim();
+
+        if (email.isEmpty() || password.isEmpty()) {
+            Toast.makeText(this, "Por favor, completa todos los campos", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        autenticacion.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        FirebaseUser usuario = autenticacion.getCurrentUser();
+                        if (usuario != null) {
+                            getSharedPreferences("UserPrefs", MODE_PRIVATE).edit()
+                                    .putString("nombre", "")
+                                    .putString("correo", usuario.getEmail())
+                                    .putString("foto", "")
+                                    .putString("USER_ID", usuario.getUid())
+                                    .apply();
+
+                            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                            startActivity(intent);
+                            finish();
+                        }
+                    } else {
+                        Toast.makeText(this, "Error al iniciar sesión: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 
     //Lo que hago aqui es crear un lanzador que abre la ventanita de Google y permite al usuario elegir la cuenta

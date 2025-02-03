@@ -28,6 +28,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import edu.pmdm.mortahil_fatimaimdbapp.databinding.ActivityMainBinding;
 import edu.pmdm.mortahil_fatimaimdbapp.sync.FavoritesSync;
+import edu.pmdm.mortahil_fatimaimdbapp.sync.UsersSync;
 import edu.pmdm.mortahil_fatimaimdbapp.utils.AppLifecycleManager;
 import androidx.lifecycle.ProcessLifecycleOwner;
 
@@ -40,6 +41,7 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseUser user;
     private String idProv;
     private FavoritesSync favSync;
+    private UsersSync usersSync;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -62,6 +64,8 @@ public class MainActivity extends AppCompatActivity {
         NavigationUI.setupActionBarWithNavController(this, navController, mAppBarConfiguration);
         NavigationUI.setupWithNavController(navigationView, navController);
 
+        usersSync = new UsersSync(this);
+
         // Inicializar AppLifecycleManager
         AppLifecycleManager lifecycleManager = new AppLifecycleManager(this);
         lifecycleManager.checkForPendingLogout();
@@ -81,7 +85,7 @@ public class MainActivity extends AppCompatActivity {
         // Obtener los datos del usuario desde SharedPreferences y ponemos datos por defecto en caso de que el usuario no tenga alguno de ellos
         String nombre = getSharedPreferences("UserPrefs", MODE_PRIVATE).getString("nombre", "Usuario");
         String correo = getSharedPreferences("UserPrefs", MODE_PRIVATE).getString("correo", "correo@ejemplo.com");
-        String fotoUrl = getSharedPreferences("UserPrefs", MODE_PRIVATE).getString("foto", null);
+        String fotoUrl = getSharedPreferences("UserPrefs", MODE_PRIVATE).getString("foto", "");
 
         // Actualizar el encabezado del NavigationView
         TextView navNombre = headerView.findViewById(R.id.textViewNombre);
@@ -104,6 +108,10 @@ public class MainActivity extends AppCompatActivity {
 
         //favSync.sincronizarHaciaFirestore();
         favSync.sincronizarDesdeFirestore();
+
+       // usersSync.sincronizarHaciaFirebase();
+
+
 
     }
 
@@ -150,6 +158,7 @@ public class MainActivity extends AppCompatActivity {
         FirebaseAuth.getInstance().signOut();
 
 
+
         // Cerrar sesión de Google
         if (idProv.equals("google.com")) {
             googleSignInClient.signOut().addOnCompleteListener(task -> {
@@ -175,6 +184,11 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(MainActivity.this, LoginActivity.class);
             startActivity(intent);
 
+            finish();
+        }else{
+
+            Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+            startActivity(intent);
             finish();
         }
     }

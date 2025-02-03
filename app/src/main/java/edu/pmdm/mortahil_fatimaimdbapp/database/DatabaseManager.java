@@ -148,4 +148,33 @@ public class DatabaseManager {
                 new String[]{idUsuario}
         );
     }
+
+    public List<User> obtenerTodosLosUsuarios() {
+        List<User> usuarios = new ArrayList<>();
+        Cursor cursor = db.query(
+                DatabaseHelper.tablaUsers, // Nombre de la tabla
+                null, // Todas las columnas
+                null, // No hay cláusula WHERE, queremos todos los registros
+                null, // No hay valores para reemplazar en el WHERE
+                null, // No agrupamos resultados
+                null, // No filtramos por grupo
+                null  // No hay orden específico
+        );
+
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                User usuario = new User(
+                        cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_user_id)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_nombre)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_mail)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_login_time)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_logout_time))
+                );
+                usuarios.add(usuario); // Agregamos cada usuario a la lista
+            }
+            cursor.close();
+        }
+        return usuarios;
+    }
+
 }

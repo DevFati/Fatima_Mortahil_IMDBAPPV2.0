@@ -4,6 +4,7 @@ import static android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Handler;
 import android.util.Log;
@@ -16,10 +17,14 @@ import com.google.firebase.auth.FirebaseUser;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 import edu.pmdm.mortahil_fatimaimdbapp.database.DatabaseHelper;
 import edu.pmdm.mortahil_fatimaimdbapp.database.DatabaseManager;
+import edu.pmdm.mortahil_fatimaimdbapp.models.User;
+import edu.pmdm.mortahil_fatimaimdbapp.sync.UsersSync;
 
 public class AppLifecycleManager implements LifecycleObserver {
 
@@ -35,6 +40,10 @@ public class AppLifecycleManager implements LifecycleObserver {
     private final Context context;
     private final DatabaseHelper databaseHelper;
     private final Handler logoutHandler = new Handler();
+    private UsersSync usersSync;
+    private DatabaseManager databaseManager;
+
+
 
     private final Runnable logoutRunnable = () -> {
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
@@ -48,6 +57,9 @@ public class AppLifecycleManager implements LifecycleObserver {
     public AppLifecycleManager(Context context) {
         this.context = context;
         this.databaseHelper = new DatabaseHelper(context);
+        this.usersSync = new UsersSync(context); // Inicialización de UsersSync
+        this.databaseManager=new DatabaseManager(context);
+
     }
 
     @OnLifecycleEvent(androidx.lifecycle.Lifecycle.Event.ON_START)
@@ -136,6 +148,10 @@ public class AppLifecycleManager implements LifecycleObserver {
             db = databaseHelper.getWritableDatabase();
             db.execSQL("UPDATE users SET logout_time = ? WHERE user_id = ?", new Object[]{fechaActual, user.getUid()});
             Log.d(TAG, "Logout registrado: " + fechaActual);
+            sincronizarRegistroConFirebase(user.getUid());
+
+
+
         } catch (Exception e) {
             Log.e(TAG, "Error al registrar logout: " + e.getMessage(), e);
         } finally {
@@ -156,4 +172,47 @@ public class AppLifecycleManager implements LifecycleObserver {
     private String obtenerFechaActual() {
         return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date());
     }
+
+
+    private void sincronizarRegistroConFirebase(String userId) {
+        SQLiteDatabase db = databaseHelper.getReadableDatabase();
+        Cursor cursor = null;
+
+        try {
+            // Consultamos el registro completo del usuario
+            cursor = db.rawQuery("SELECT user_id, name, email, login_time, logout_time FROM users WHERE user_id = ?",
+                    new String[]{userId});
+
+            if (cursor != null && cursor.moveToFirst()) {
+                String id = cursor.getString(cursor.getColumnIndexOrThrow("user_id"));
+                String name = cursor.getString(cursor.getColumnIndexOrThrow("name"));
+                String email = cursor.getString(cursor.getColumnIndexOrThrow("email"));
+                String loginTime = cursor.getString(cursor.getColumnIndexOrThrow("login_time"));
+                String logoutTime = cursor.getString(cursor.getColumnIndexOrThrow("logout_time"));
+
+                // Preparamos los datos para Firebase
+                Map<String, Object> registro = new HashMap<>();
+                registro.put("user_id", id);
+                registro.put("name", name);
+                registro.put("email", email);
+
+                Map<String, Object> activityLog = new HashMap<>();
+                activityLog.put("login_time", loginTime);
+                activityLog.put("logout_time", logoutTime);
+
+                // Enviamos el registro a Firebase
+                UsersSync usersSync = new UsersSync(context);
+                usersSync.sincronizarRegistro(id, registro, activityLog);
+
+            } else {
+                Log.w(TAG, "No se encontró el registro del usuario para sincronizar: " + userId);
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error al sincronizar el registro con Firebase: " + e.getMessage(), e);
+        } finally {
+            if (cursor != null) cursor.close();
+        }
+    }
+
 }
