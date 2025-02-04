@@ -38,6 +38,9 @@
         tools:ignore="Instantiatable"
         tools:targetApi="31">
         <activity
+            android:name=".KeystoreManager"
+            android:exported="false" />
+        <activity
             android:name=".SelectAddressActivity"
             android:exported="false" />
         <activity

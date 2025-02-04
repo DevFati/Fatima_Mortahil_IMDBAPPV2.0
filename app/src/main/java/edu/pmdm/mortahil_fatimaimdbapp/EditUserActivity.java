@@ -54,14 +54,24 @@ public class EditUserActivity extends AppCompatActivity {
             Places.initialize(getApplicationContext(), "AIzaSyAER7D-uvYpBOG3wZjz9z3AeGulqAci-OU");
         }
 
+        // Configurar el CountryCodePicker para el prefijo
+        binding.countryCodePicker.registerCarrierNumberEditText(binding.editUserPhone);
 
         // Cargar datos desde SharedPreferences
         SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
         binding.editUserName.setText(prefs.getString("nombre", ""));
         binding.editUserEmail.setText(prefs.getString("correo", ""));
-        binding.editUserPhone.setText(prefs.getString("telefono", ""));
         binding.editUserAddress.setText(prefs.getString("direccion", ""));
         imagenGuardada = prefs.getString("foto", ""); // Cargar la imagen guardada
+
+        // Cargar prefijo y número de teléfono
+        String telefonoCompleto = prefs.getString("telefono", ""); // Teléfono con prefijo guardado
+        if (!telefonoCompleto.isEmpty()) {
+            // Separar prefijo y número
+            binding.countryCodePicker.setFullNumber(telefonoCompleto);
+            String numeroSinPrefijo = telefonoCompleto.replace("+" + binding.countryCodePicker.getSelectedCountryCode(), "");
+            binding.editUserPhone.setText(numeroSinPrefijo.trim()); // Mostrar solo el número
+        }
 
         if (!imagenGuardada.isEmpty()) {
             Glide.with(this).load(imagenGuardada).into(binding.userImageView);
@@ -70,15 +80,26 @@ public class EditUserActivity extends AppCompatActivity {
         }
 
 
+
+
+
         // Seleccionar imagen
         binding.selectImageButton.setOnClickListener(v -> mostrarDialogoSeleccionImagen());
-        binding.selectAddressButton.setOnClickListener(v -> abrirSelectorDireccion());
+        binding.selectAddressButton.setOnClickListener(v -> verificarPermisoUbicacionYAbrirSelector());
 
         // Guardar cambios
         binding.saveUserButton.setOnClickListener(v -> {
+            String telCompleto = binding.countryCodePicker.getFullNumberWithPlus();
+
+            // Validar el número de teléfono
+            if (!binding.countryCodePicker.isValidFullNumber()) {
+                Toast.makeText(this, "Número de teléfono inválido", Toast.LENGTH_SHORT).show();
+                return; // Detener el proceso de guardado
+            }
+
             SharedPreferences.Editor editor = prefs.edit();
             editor.putString("nombre", binding.editUserName.getText().toString());
-            editor.putString("telefono", binding.editUserPhone.getText().toString());
+            editor.putString("telefono", telCompleto);
 
             // Guardar la dirección seleccionada solo al presionar "Save"
             if (direccionTemporal != null) {
@@ -105,6 +126,28 @@ public class EditUserActivity extends AppCompatActivity {
                     binding.editUserAddress.setText(direccionTemporal); // Mostrar temporalmente en el EditText
                 }
             });
+
+    private void verificarPermisoUbicacionYAbrirSelector() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            // Si el permiso ya está otorgado, abrir la actividad
+            abrirSelectorDireccion();
+        } else {
+            // Si no tiene permiso, solicitarlo
+            solicitarPermisoUbicacion.launch(Manifest.permission.ACCESS_FINE_LOCATION);
+        }
+    }
+
+    private final ActivityResultLauncher<String> solicitarPermisoUbicacion =
+            registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
+                if (isGranted) {
+                    // Si el usuario aceptó, abrir la actividad de dirección
+                    abrirSelectorDireccion();
+                } else {
+                    // Si el usuario denegó el permiso, mostrar un mensaje
+                    Toast.makeText(this, "Permiso de ubicación requerido para seleccionar una dirección", Toast.LENGTH_LONG).show();
+                }
+            });
+
 
 
 
