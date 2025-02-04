@@ -8,8 +8,11 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.MediaStore;
 import android.text.InputType;
+import android.util.Log;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -30,7 +33,10 @@ import com.google.android.libraries.places.widget.model.AutocompleteActivityMode
 
 import java.util.Arrays;
 
+import edu.pmdm.mortahil_fatimaimdbapp.database.DatabaseManager;
 import edu.pmdm.mortahil_fatimaimdbapp.databinding.ActivityEditUserBinding;
+import edu.pmdm.mortahil_fatimaimdbapp.models.User;
+import edu.pmdm.mortahil_fatimaimdbapp.sync.UsersSync;
 
 public class EditUserActivity extends AppCompatActivity {
 
@@ -40,14 +46,25 @@ public class EditUserActivity extends AppCompatActivity {
     private Uri imagenCamaraUri; // URI de la imagen capturada
     private String direccionTemporal = ""; // Dirección seleccionada
     private static final int SELECT_ADDRESS_REQUEST = 1; // Declaración de la constante para manejar la dirección
-
+    private UsersSync usersSync;
+    private KeystoreManager keystoreManager;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        usersSync=new UsersSync(this);
+        keystoreManager=new KeystoreManager();
         // Configuración del ViewBinding
         binding = ActivityEditUserBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+// Obtener el ID del usuario desde SharedPreferences
+        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        String userId = prefs.getString("USER_ID", "");
+        // Sincronizar Firestore con la base de datos local
+        DatabaseManager databaseManager = new DatabaseManager(this);
+        usersSync.sincronizarDesdeFirebase(userId);
+
+
+
 
         // Inicializar Places API con la API Key
         if (!Places.isInitialized()) {
@@ -57,28 +74,12 @@ public class EditUserActivity extends AppCompatActivity {
         // Configurar el CountryCodePicker para el prefijo
         binding.countryCodePicker.registerCarrierNumberEditText(binding.editUserPhone);
 
-        // Cargar datos desde SharedPreferences
-        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
-        binding.editUserName.setText(prefs.getString("nombre", ""));
-        binding.editUserEmail.setText(prefs.getString("correo", ""));
-        binding.editUserAddress.setText(prefs.getString("direccion", ""));
-        imagenGuardada = prefs.getString("foto", ""); // Cargar la imagen guardada
 
-        // Cargar prefijo y número de teléfono
-        String telefonoCompleto = prefs.getString("telefono", ""); // Teléfono con prefijo guardado
-        if (!telefonoCompleto.isEmpty()) {
-            // Separar prefijo y número
-            binding.countryCodePicker.setFullNumber(telefonoCompleto);
-            String numeroSinPrefijo = telefonoCompleto.replace("+" + binding.countryCodePicker.getSelectedCountryCode(), "");
-            binding.editUserPhone.setText(numeroSinPrefijo.trim()); // Mostrar solo el número
-        }
-
-        if (!imagenGuardada.isEmpty()) {
-            Glide.with(this).load(imagenGuardada).into(binding.userImageView);
-        } else {
-            binding.userImageView.setImageResource(R.drawable.baseline_account_box_24); // Imagen por defecto
-        }
-
+        // Esperar un breve tiempo para completar la sincronización
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            // Mostrar datos desde la base de datos local
+            cargarDatosDesdeBaseDeDatosLocal(userId);
+        }, 1000); // Espera de 1 segundo (ajustar según sea necesario)
 
 
 
@@ -88,36 +89,98 @@ public class EditUserActivity extends AppCompatActivity {
         binding.selectAddressButton.setOnClickListener(v -> verificarPermisoUbicacionYAbrirSelector());
 
         // Guardar cambios
-        binding.saveUserButton.setOnClickListener(v -> {
-            String telCompleto = binding.countryCodePicker.getFullNumberWithPlus();
+        binding.saveUserButton.setOnClickListener(v -> guardarDatosEnLocalYNube());
 
-            // Validar el número de teléfono
-            if (!binding.countryCodePicker.isValidFullNumber()) {
-                Toast.makeText(this, "Número de teléfono inválido", Toast.LENGTH_SHORT).show();
-                return; // Detener el proceso de guardado
-            }
-
-            SharedPreferences.Editor editor = prefs.edit();
-            editor.putString("nombre", binding.editUserName.getText().toString());
-            editor.putString("telefono", telCompleto);
-
-            // Guardar la dirección seleccionada solo al presionar "Save"
-            if (direccionTemporal != null) {
-                editor.putString("direccion", direccionTemporal);
-            }
-
-            // Solo guardar la imagen si el usuario ha seleccionado una nueva
-            if (imagenTemporal != null) {
-                editor.putString("foto", imagenTemporal);
-            }
-
-            editor.apply();
-            Toast.makeText(this, "Usuario actualizado correctamente", Toast.LENGTH_SHORT).show();
-            finish();
-        });
 
 
     }
+
+    private void cargarDatosDesdeBaseDeDatosLocal(String userId) {
+        DatabaseManager databaseManager = new DatabaseManager(this);
+        try {
+            User usuario = databaseManager.obtenerUsuarioPorId(userId);
+            if (usuario != null) {
+                // Asignar datos descifrados a los campos de la UI
+                binding.editUserName.setText(usuario.getNombre());
+                binding.editUserEmail.setText(usuario.getCorreo());
+
+                String direccionDescifrada = usuario.getAddress();
+                String telefonoDescifrado = usuario.getPhone();
+
+                binding.editUserAddress.setText(direccionDescifrada != null ? direccionDescifrada : "");
+                binding.countryCodePicker.setFullNumber(telefonoDescifrado != null ? telefonoDescifrado : "");
+
+                // Cargar imagen si está disponible
+                if (usuario.getImage() != null && !usuario.getImage().isEmpty()) {
+                    Glide.with(this).load(usuario.getImage()).into(binding.userImageView);
+                } else {
+                    binding.userImageView.setImageResource(R.drawable.baseline_account_box_24); // Imagen por defecto
+                }
+            } else {
+                Toast.makeText(this, "Usuario no encontrado en la base de datos local", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Log.e("EditUserActivity", "Error al cargar datos del usuario", e);
+            Toast.makeText(this, "Error al cargar los datos del usuario", Toast.LENGTH_SHORT).show();
+        } finally {
+            databaseManager.close();
+        }
+    }
+
+
+
+
+
+    private void guardarDatosEnLocalYNube() {
+        String telCompleto = binding.countryCodePicker.getFullNumberWithPlus();
+        String nombre = binding.editUserName.getText().toString();
+        String direccion = direccionTemporal != null && !direccionTemporal.isEmpty() ? direccionTemporal : binding.editUserAddress.getText().toString();
+        String imagen = imagenTemporal != null ? imagenTemporal : imagenGuardada;
+
+
+
+        // Validar el número de teléfono
+        if (!binding.countryCodePicker.isValidFullNumber()) {
+            Toast.makeText(this, "Número de teléfono inválido", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Guardar en SharedPreferences
+        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        String userId = prefs.getString("USER_ID", "");
+
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putString("nombre", nombre);
+        editor.putString("telefono", telCompleto);
+        editor.putString("direccion", direccion);
+        editor.putString("foto", imagen);
+        editor.apply();
+
+        // Guardar los datos en la base de datos local
+        DatabaseManager databaseManager = new DatabaseManager(this);
+        try {
+            databaseManager.actualizarDatosUsuario(
+                    userId,
+                    nombre,
+                    telCompleto,
+                    direccion,
+                    imagen
+            );
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Error al actualizar los datos", Toast.LENGTH_SHORT).show();
+        } finally {
+            databaseManager.close();
+        }
+
+        // Finalizar la actividad
+        finish();
+    }
+
+
+
 
     private final ActivityResultLauncher<Intent> seleccionarDireccionLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {

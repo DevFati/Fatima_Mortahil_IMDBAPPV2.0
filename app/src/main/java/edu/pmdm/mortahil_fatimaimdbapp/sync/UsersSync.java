@@ -12,6 +12,7 @@ import com.google.firebase.firestore.SetOptions;
 import java.util.HashMap;
 import java.util.Map;
 
+import edu.pmdm.mortahil_fatimaimdbapp.KeystoreManager;
 import edu.pmdm.mortahil_fatimaimdbapp.database.DatabaseManager;
 import edu.pmdm.mortahil_fatimaimdbapp.models.User;
 
@@ -23,76 +24,88 @@ public class UsersSync {
     private final FirebaseFirestore firestore;
     private final DatabaseManager databaseManager; // Para gestionar la sincronización local
     private final CollectionReference usersCollection;
+    private final KeystoreManager keystoreManager; // Gestor de cifrado
 
     public UsersSync(Context context) {
         firestore = FirebaseFirestore.getInstance();
         usersCollection = firestore.collection(COLLECTION_USERS);
         databaseManager = new DatabaseManager(context); // Base de datos local
+        keystoreManager = new KeystoreManager(); // Inicializar el gestor de cifrado
+
     }
 
     // Sincroniza los datos locales hacia Firebase
     public void sincronizarHaciaFirebase() {
         for (User user : databaseManager.obtenerTodosLosUsuarios()) {
-            Map<String, Object> userData = new HashMap<>();
-            userData.put("user_id", user.getId());
-            userData.put("name", user.getNombre());
-            userData.put("email", user.getCorreo());
+            try {
+                // Validar y cifrar campos sensibles
+                String addressCifrado = user.getAddress() != null ? keystoreManager.cifrar(user.getAddress()) : "";
+                String phoneCifrado = user.getPhone() != null ? keystoreManager.cifrar(user.getPhone()) : "";
+                String imageCifrada = user.getImage() != null ? keystoreManager.cifrar(user.getImage()) : "";
 
-            Map<String, Object> activityLog = new HashMap<>();
-            activityLog.put("login_time", user.getUltimoLogin());
-            activityLog.put("logout_time", user.getUltimoLogout());
+                Map<String, Object> userData = new HashMap<>();
+                userData.put("user_id", user.getId());
+                userData.put("name", user.getNombre() != null ? user.getNombre() : "");
+                userData.put("email", user.getCorreo() != null ? user.getCorreo() : "");
+                userData.put("address", addressCifrado);
+                userData.put("phone", phoneCifrado);
+                userData.put("image", imageCifrada);
 
-            // Agregar el log de actividad
-            usersCollection.document(user.getId())
-                    .set(userData, SetOptions.merge())
-                    .addOnSuccessListener(aVoid -> Log.d(TAG, "Usuario sincronizado con Firebase: " + user.getId()))
-                    .addOnFailureListener(e -> Log.e(TAG, "Error al sincronizar usuario con Firebase: " + user.getId(), e));
+                Map<String, Object> activityLog = new HashMap<>();
+                activityLog.put("login_time", user.getUltimoLogin() != null ? user.getUltimoLogin() : "");
+                activityLog.put("logout_time", user.getUltimoLogout() != null ? user.getUltimoLogout() : "");
 
-            usersCollection.document(user.getId())
-                    .collection("activity_log")
-                    .add(activityLog)
-                    .addOnSuccessListener(aVoid -> Log.d(TAG, "Log de actividad sincronizado: " + user.getId()))
-                    .addOnFailureListener(e -> Log.e(TAG, "Error al sincronizar log de actividad: " + user.getId(), e));
+                // Subir usuario a Firebase
+                usersCollection.document(user.getId())
+                        .set(userData, SetOptions.merge())
+                        .addOnSuccessListener(aVoid -> Log.d(TAG, "Usuario sincronizado con Firebase: " + user.getId()))
+                        .addOnFailureListener(e -> Log.e(TAG, "Error al sincronizar usuario con Firebase: " + user.getId(), e));
+
+                // Subir log de actividad
+                usersCollection.document(user.getId())
+                        .collection("activity_log")
+                        .add(activityLog)
+                        .addOnSuccessListener(aVoid -> Log.d(TAG, "Log de actividad sincronizado: " + user.getId()))
+                        .addOnFailureListener(e -> Log.e(TAG, "Error al sincronizar log de actividad: " + user.getId(), e));
+            } catch (Exception e) {
+                Log.e(TAG, "Error al cifrar datos del usuario: " + user.getId(), e);
+            }
         }
     }
 
+
     // Sincroniza los datos desde Firebase hacia la base de datos local
-    public void sincronizarDesdeFirebase() {
-        usersCollection.get().addOnCompleteListener(task -> {
-            if (task.isSuccessful()) {
-                QuerySnapshot snapshot = task.getResult();
-                if (snapshot != null && !snapshot.isEmpty()) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                        snapshot.forEach(document -> {
-                            Map<String, Object> userData = document.getData();
-                            String userId = (String) userData.get("user_id");
-                            String name = (String) userData.get("name");
-                            String email = (String) userData.get("email");
+    public void sincronizarDesdeFirebase(String userId) {
+        usersCollection.document(userId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        try {
+                            // Leer datos desde Firebase
+                            String nombre = documentSnapshot.getString("name");
+                            String telefonoCifrado = documentSnapshot.getString("phone");
+                            String direccionCifrada = documentSnapshot.getString("address");
+                            String imagen = documentSnapshot.getString("image");
 
-                            // Extraer el log de actividad
-                            usersCollection.document(userId).collection("activity_log")
-                                    .get()
-                                    .addOnSuccessListener(activitySnapshot -> {
-                                        if (activitySnapshot != null && !activitySnapshot.isEmpty()) {
-                                            activitySnapshot.forEach(activityDoc -> {
-                                                String loginTime = (String) activityDoc.get("login_time");
-                                                String logoutTime = (String) activityDoc.get("logout_time");
-
-                                                // Guardar en la base de datos local
-                                                User user = new User(userId, name, email, loginTime, logoutTime);
-                                                databaseManager.guardarUsuario(user);
-                                            });
-                                        }
-                                    })
-                                    .addOnFailureListener(e -> Log.e(TAG, "Error al obtener el log de actividad: " + userId, e));
-                        });
+                            // Actualizar la base de datos local
+                            databaseManager.actualizarDatosUsuario(
+                                    userId,
+                                    nombre,
+                                    telefonoCifrado,
+                                    direccionCifrada,
+                                    imagen
+                            );
+                            Log.d("UsersSync", "Sincronización exitosa desde Firebase para el usuario: " + userId);
+                        } catch (Exception e) {
+                            Log.e("UsersSync", "Error al sincronizar datos desde Firebase para el usuario: " + userId, e);
+                        }
+                    } else {
+                        Log.w("UsersSync", "El documento no existe en Firebase para el usuario: " + userId);
                     }
-                }
-            } else {
-                Log.e(TAG, "Error al sincronizar desde Firebase", task.getException());
-            }
-        });
+                })
+                .addOnFailureListener(e -> Log.e("UsersSync", "Error al obtener datos de Firebase", e));
     }
+
+
 
 //Estoy creando este metodo que me permitira subir tanto el login y el logout de la actividad, sin subir datos nulos.
 

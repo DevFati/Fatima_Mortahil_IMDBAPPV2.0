@@ -109,7 +109,7 @@ public class MainActivity extends AppCompatActivity {
         //favSync.sincronizarHaciaFirestore();
         favSync.sincronizarDesdeFirestore();
 
-       // usersSync.sincronizarHaciaFirebase();
+        //usersSync.sincronizarHaciaFirebase();
 
 
 
