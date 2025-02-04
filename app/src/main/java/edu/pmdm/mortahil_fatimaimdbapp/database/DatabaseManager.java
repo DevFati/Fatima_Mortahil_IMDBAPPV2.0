@@ -5,22 +5,34 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.util.Log;
+import android.widget.Toast;
 
 import androidx.core.util.Pair;
 
-import java.util.ArrayList;
-import java.util.List;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.SetOptions;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import edu.pmdm.mortahil_fatimaimdbapp.KeystoreManager;
 import edu.pmdm.mortahil_fatimaimdbapp.models.User;
 
 public class DatabaseManager {
 
     private SQLiteDatabase db; // Conexión a la base de datos
     private DatabaseHelper dbHelper; // Helper que gestiona la base de datos combinada
+    private KeystoreManager keystoreManager; // Manejador de cifrado
 
     public DatabaseManager(Context context) {
         dbHelper = new DatabaseHelper(context); // Usamos el helper combinado
         db = dbHelper.getWritableDatabase(); // Abrimos la conexión a la base de datos
+        keystoreManager = new KeystoreManager(); // Inicializamos el manejador de cifrado
+
     }
 
     public void close() {
@@ -98,19 +110,33 @@ public class DatabaseManager {
 
     // ----------------------- Gestión de Usuarios -----------------------
     public void guardarUsuario(User usuario) {
-        ContentValues valores = new ContentValues();
-        valores.put(DatabaseHelper.columna_user_id, usuario.getId());
-        valores.put(DatabaseHelper.columna_nombre, usuario.getNombre());
-        valores.put(DatabaseHelper.columna_mail, usuario.getCorreo());
-        valores.put(DatabaseHelper.columna_login_time, usuario.getUltimoLogin());
-        valores.put(DatabaseHelper.columna_logout_time, usuario.getUltimoLogout());
+        try {
+            ContentValues valores = new ContentValues();
+            valores.put(DatabaseHelper.columna_user_id, usuario.getId());
+            valores.put(DatabaseHelper.columna_nombre, usuario.getNombre());
+            valores.put(DatabaseHelper.columna_mail, usuario.getCorreo());
 
-        db.insertWithOnConflict(
-                DatabaseHelper.tablaUsers,
-                null,
-                valores,
-                SQLiteDatabase.CONFLICT_REPLACE
-        );
+            // Cifrar dirección y teléfono antes de guardarlos
+            if (usuario.getAddress() != null) {
+                valores.put(DatabaseHelper.columna_address, keystoreManager.cifrar(usuario.getAddress()));
+            }
+            if (usuario.getPhone() != null) {
+                valores.put(DatabaseHelper.columna_phone, keystoreManager.cifrar(usuario.getPhone()));
+            }
+
+            valores.put(DatabaseHelper.columna_image, usuario.getImage());
+            valores.put(DatabaseHelper.columna_login_time, usuario.getUltimoLogin());
+            valores.put(DatabaseHelper.columna_logout_time, usuario.getUltimoLogout());
+
+            db.insertWithOnConflict(
+                    DatabaseHelper.tablaUsers,
+                    null,
+                    valores,
+                    SQLiteDatabase.CONFLICT_REPLACE
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public User obtenerUsuarioPorId(String idUsuario) {
@@ -123,15 +149,34 @@ public class DatabaseManager {
         );
 
         if (cursor != null && cursor.moveToFirst()) {
-            User usuario = new User(
-                    cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_user_id)),
-                    cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_nombre)),
-                    cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_mail)),
-                    cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_login_time)),
-                    cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_logout_time))
-            );
-            cursor.close();
-            return usuario;
+            try {
+                // Descifrar dirección y teléfono al leerlos
+                String direccion = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_address));
+                if (direccion != null) {
+                    direccion = keystoreManager.descifrar(direccion);
+                }
+
+                String telefono = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_phone));
+                if (telefono != null) {
+                    telefono = keystoreManager.descifrar(telefono);
+                }
+
+                User usuario = new User(
+                        cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_user_id)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_nombre)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_mail)),
+                        telefono, // Número de teléfono descifrado
+                        direccion, // Dirección descifrada
+                        cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_image)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_login_time)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_logout_time))
+                );
+
+                cursor.close();
+                return usuario;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
         return null;
@@ -163,18 +208,100 @@ public class DatabaseManager {
 
         if (cursor != null) {
             while (cursor.moveToNext()) {
-                User usuario = new User(
-                        cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_user_id)),
-                        cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_nombre)),
-                        cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_mail)),
-                        cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_login_time)),
-                        cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_logout_time))
-                );
-                usuarios.add(usuario); // Agregamos cada usuario a la lista
+                try {
+                    // Descifrar dirección y teléfono al leerlos
+                    String direccion = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_address));
+                    if (direccion != null) {
+                        direccion = keystoreManager.descifrar(direccion);
+                    }
+
+                    String telefono = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_phone));
+                    if (telefono != null) {
+                        telefono = keystoreManager.descifrar(telefono);
+                    }
+
+                    User usuario = new User(
+                            cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_user_id)),
+                            cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_nombre)),
+                            cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_mail)),
+                            telefono, // Número de teléfono descifrado
+                            direccion, // Dirección descifrada
+                            cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_image)),
+                            cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_login_time)),
+                            cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_logout_time))
+                    );
+                    usuarios.add(usuario);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
             cursor.close();
         }
         return usuarios;
     }
+
+
+    public void actualizarDatosUsuario(String userId, String nombre, String telefono, String direccion, String imagen) {
+        try {
+            Log.d("DatabaseManager","entraaa" );
+
+            ContentValues valores = new ContentValues();
+
+            // Solo actualizamos los datos especificados
+            if (nombre != null && !nombre.isEmpty()) {
+                valores.put(DatabaseHelper.columna_nombre, nombre);
+            }
+            if (telefono != null && !telefono.isEmpty()) {
+                valores.put(DatabaseHelper.columna_phone, keystoreManager.cifrar(telefono)); // Cifrar el teléfono
+            }
+            if (direccion != null && !direccion.isEmpty()) {
+                valores.put(DatabaseHelper.columna_address, keystoreManager.cifrar(direccion)); // Cifrar la dirección
+            }
+            if (imagen != null && !imagen.isEmpty()) {
+                valores.put(DatabaseHelper.columna_image, imagen);
+            }
+
+            // Actualizamos la tabla users donde el ID coincida
+            db.update(
+                    DatabaseHelper.tablaUsers,
+                    valores,
+                    DatabaseHelper.columna_user_id + "=?",
+                    new String[]{userId}
+            );
+
+
+            Log.d("DatabaseManager", "UserId: " + userId);
+            Log.d("DatabaseManager", "Nombre: " + nombre);
+            Log.d("DatabaseManager", "Teléfono cifrado: " + keystoreManager.cifrar(telefono));
+            Log.d("DatabaseManager", "Dirección cifrada: " + keystoreManager.cifrar(direccion));
+            Log.d("DatabaseManager", "Imagen: " + imagen);
+
+            // Sincronizar con Firebase
+            FirebaseFirestore firestore = FirebaseFirestore.getInstance();
+            DocumentReference userRef = firestore.collection("users").document(userId);
+
+            Map<String, Object> datosActualizados = new HashMap<>();
+            if (nombre != null && !nombre.isEmpty()) {
+                datosActualizados.put("name", nombre);
+            }
+            if (telefono != null && !telefono.isEmpty()) {
+                datosActualizados.put("phone", keystoreManager.cifrar(telefono)); // Sin cifrar, ya está listo para Firebase
+            }
+            if (direccion != null && !direccion.isEmpty()) {
+                datosActualizados.put("address", keystoreManager.cifrar(direccion)); // Sin cifrar, ya está listo para Firebase
+            }
+            if (imagen != null && !imagen.isEmpty()) {
+                datosActualizados.put("image", imagen);
+            }
+
+            userRef.set(datosActualizados, SetOptions.merge())
+                    .addOnSuccessListener(aVoid -> Log.d("FirebaseUpdate", "Datos sincronizados con Firebase para el usuario: " + userId))
+                    .addOnFailureListener(e -> Log.e("FirebaseUpdate", "Error al sincronizar con Firebase para el usuario: " + userId, e));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
 }

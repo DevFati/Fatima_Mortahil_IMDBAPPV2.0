@@ -1,6 +1,7 @@
 package edu.pmdm.mortahil_fatimaimdbapp;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.MenuItem;
 import android.view.View;
@@ -42,6 +43,8 @@ public class MainActivity extends AppCompatActivity {
     private String idProv;
     private FavoritesSync favSync;
     private UsersSync usersSync;
+    private TextView navNombre,navCorreo;
+    private  ImageView navFoto;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -85,9 +88,9 @@ public class MainActivity extends AppCompatActivity {
         String fotoUrl = getSharedPreferences("UserPrefs", MODE_PRIVATE).getString("foto", "");
 
         // Actualizar el encabezado del NavigationView
-        TextView navNombre = headerView.findViewById(R.id.textViewNombre);
-        TextView navCorreo = headerView.findViewById(R.id.textViewCorreo);
-        ImageView navFoto = headerView.findViewById(R.id.imageViewImagen);
+         navNombre = headerView.findViewById(R.id.textViewNombre);
+         navCorreo = headerView.findViewById(R.id.textViewCorreo);
+         navFoto = headerView.findViewById(R.id.imageViewImagen);
 
         navNombre.setText(nombre);
         navCorreo.setText(correo);
@@ -106,7 +109,7 @@ public class MainActivity extends AppCompatActivity {
         //favSync.sincronizarHaciaFirestore();
         favSync.sincronizarDesdeFirestore();
 
-       // usersSync.sincronizarHaciaFirebase();
+        //usersSync.sincronizarHaciaFirebase();
 
 
 
@@ -126,6 +129,10 @@ public class MainActivity extends AppCompatActivity {
         // Maneja los clics en los elementos del menú
         if (item.getItemId() == R.id.buttonLogout) {
             cerrarSesion();
+            return true;
+        }else  if (item.getItemId() == R.id.action_edit_user) {
+            Intent intent = new Intent(this, EditUserActivity.class);
+            startActivity(intent);
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -183,5 +190,30 @@ public class MainActivity extends AppCompatActivity {
             finish();
         }
     }
+
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        // Cargar datos actualizados desde SharedPreferences
+        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        String nombre = prefs.getString("nombre", "Usuario");
+        String correo = prefs.getString("correo", "correo@ejemplo.com");
+        String fotoUrl = prefs.getString("foto", "");
+
+        navNombre.setText(nombre);
+        navCorreo.setText(correo);
+
+        //Si hay una url de foto la cargamos pero sino la hay, ponemos una por defecto
+        if (fotoUrl != null && !fotoUrl.isEmpty()) {
+            Glide.with(this).load(fotoUrl).into(navFoto);
+        } else {
+            navFoto.setImageResource(R.drawable.baseline_account_box_24); // Imagen por defecto si no hay foto
+        }
+
+
+    }
+
 
 }

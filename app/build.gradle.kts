@@ -33,7 +33,6 @@ android {
 
 
 
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
@@ -87,6 +86,13 @@ dependencies {
 
 
 
+
+
+    implementation ("com.google.android.libraries.places:places:2.6.0")
+    implementation ("com.google.android.gms:play-services-maps:18.1.0")
+
+
+    implementation ("com.hbb20:ccp:2.5.1")
 
 
 
