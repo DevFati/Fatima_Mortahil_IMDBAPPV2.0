@@ -16,11 +16,19 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.bumptech.glide.Glide;
+import com.google.android.libraries.places.api.Places;
+import com.google.android.libraries.places.api.model.Place;
+import com.google.android.libraries.places.widget.Autocomplete;
+import com.google.android.libraries.places.widget.AutocompleteActivity;
+import com.google.android.libraries.places.widget.model.AutocompleteActivityMode;
+
+import java.util.Arrays;
 
 import edu.pmdm.mortahil_fatimaimdbapp.databinding.ActivityEditUserBinding;
 
@@ -30,6 +38,8 @@ public class EditUserActivity extends AppCompatActivity {
     private String imagenTemporal = null; // Imagen seleccionada pero aún no guardada
     private String imagenGuardada; // Imagen previa guardada en SharedPreferences
     private Uri imagenCamaraUri; // URI de la imagen capturada
+    private String direccionTemporal = ""; // Dirección seleccionada
+    private static final int SELECT_ADDRESS_REQUEST = 1; // Declaración de la constante para manejar la dirección
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,6 +48,12 @@ public class EditUserActivity extends AppCompatActivity {
         // Configuración del ViewBinding
         binding = ActivityEditUserBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+
+        // Inicializar Places API con la API Key
+        if (!Places.isInitialized()) {
+            Places.initialize(getApplicationContext(), "AIzaSyAER7D-uvYpBOG3wZjz9z3AeGulqAci-OU");
+        }
+
 
         // Cargar datos desde SharedPreferences
         SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
@@ -53,15 +69,21 @@ public class EditUserActivity extends AppCompatActivity {
             binding.userImageView.setImageResource(R.drawable.baseline_account_box_24); // Imagen por defecto
         }
 
+
         // Seleccionar imagen
         binding.selectImageButton.setOnClickListener(v -> mostrarDialogoSeleccionImagen());
+        binding.selectAddressButton.setOnClickListener(v -> abrirSelectorDireccion());
 
         // Guardar cambios
         binding.saveUserButton.setOnClickListener(v -> {
             SharedPreferences.Editor editor = prefs.edit();
             editor.putString("nombre", binding.editUserName.getText().toString());
             editor.putString("telefono", binding.editUserPhone.getText().toString());
-            editor.putString("direccion", binding.editUserAddress.getText().toString());
+
+            // Guardar la dirección seleccionada solo al presionar "Save"
+            if (direccionTemporal != null) {
+                editor.putString("direccion", direccionTemporal);
+            }
 
             // Solo guardar la imagen si el usuario ha seleccionado una nueva
             if (imagenTemporal != null) {
@@ -72,7 +94,29 @@ public class EditUserActivity extends AppCompatActivity {
             Toast.makeText(this, "Usuario actualizado correctamente", Toast.LENGTH_SHORT).show();
             finish();
         });
+
+
     }
+
+    private final ActivityResultLauncher<Intent> seleccionarDireccionLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    direccionTemporal = result.getData().getStringExtra("direccion");
+                    binding.editUserAddress.setText(direccionTemporal); // Mostrar temporalmente en el EditText
+                }
+            });
+
+
+
+
+
+    private void abrirSelectorDireccion() {
+        Intent intent = new Intent(this, SelectAddressActivity.class);
+        intent.putExtra("direccion_actual", binding.editUserAddress.getText().toString()); // Pasar dirección actual
+        seleccionarDireccionLauncher.launch(intent);
+    }
+
+
 
     private void mostrarDialogoSeleccionImagen() {
         String[] opciones = {"Tomar foto", "Seleccionar de galería", "Ingresar URL"};

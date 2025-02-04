@@ -88,6 +88,9 @@ dependencies {
 
 
 
+    implementation ("com.google.android.libraries.places:places:2.6.0")
+    implementation ("com.google.android.gms:play-services-maps:18.1.0")
+
 
 
 
