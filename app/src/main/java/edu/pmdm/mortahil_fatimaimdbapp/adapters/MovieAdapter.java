@@ -151,7 +151,7 @@ public class MovieAdapter extends RecyclerView.Adapter<MovieAdapter.MovieViewHol
                     DatabaseManager gestorFavoritos = new DatabaseManager(context);
                     boolean agregado = gestorFavoritos.agregarFavorito(movie.getId(), userId, movie.getApi());
                     if (agregado) {
-                        favSync.agregarFavorito(movie);
+                        favSync.agregarFavorito(movie,userId);
                         Toast.makeText(context, "Agregada a favoritos: " + movie.getTitulo(), Toast.LENGTH_SHORT).show();
                     } else {
                         Toast.makeText(context, "Ya está en tus favoritos.", Toast.LENGTH_SHORT).show();

@@ -30,6 +30,7 @@ import com.facebook.FacebookException;
 import com.facebook.FacebookSdk;
 import com.facebook.GraphRequest;
 import com.facebook.appevents.AppEventsLogger;
+import com.facebook.login.LoginManager;
 import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
@@ -39,10 +40,12 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.Firebase;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FacebookAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthUserCollisionException;
 import com.google.firebase.auth.FirebaseUser;
 
 import org.json.JSONException;
@@ -51,12 +54,17 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 import edu.pmdm.mortahil_fatimaimdbapp.databinding.ActivityLogInBinding;
+import edu.pmdm.mortahil_fatimaimdbapp.models.User;
+import edu.pmdm.mortahil_fatimaimdbapp.sync.FavoritesSync;
+import edu.pmdm.mortahil_fatimaimdbapp.sync.UsersSync;
 
 public class LoginActivity extends AppCompatActivity {
     private FirebaseAuth autenticacion;
     private GoogleSignInClient clienteGoogle;
     private ActivityLogInBinding enlaceVista;
     private CallbackManager mCallbackManager;
+    private UsersSync usersSync;
+    private FavoritesSync favSync;
 
 
     @Override
@@ -76,7 +84,12 @@ public class LoginActivity extends AppCompatActivity {
         });
 
         enlaceVista.imageView2.setImageResource(R.drawable.logo);
-
+        favSync=new FavoritesSync(this);
+//favSync.sincronizarHaciaFirestore();
+        favSync.cargarFavoritosDesdeFirestore();
+        usersSync=new UsersSync(this);
+        //usersSync.sincronizarHaciaFirebase();
+        usersSync.sincronizarTodosDesdeFirebase();
 
         // Verificar si el usuario ya inició sesión porque si lo esta ya, pasa directamente a la pantalla Main
         if (FirebaseAuth.getInstance().getCurrentUser() != null) {
@@ -334,8 +347,16 @@ public class LoginActivity extends AppCompatActivity {
                 request.setParameters(parameters);
                 request.executeAsync();
             } else {
+                if(task.getException() instanceof FirebaseAuthUserCollisionException){
+                    Toast.makeText(this, "Este correo esta con otro proveedor", Toast.LENGTH_SHORT).show();
+                    if(AccessToken.getCurrentAccessToken()!=null){
+                        LoginManager.getInstance().logOut();
+                    }
+
+                }else{
+                    Toast.makeText(this, "Error al autenticar con Facebook", Toast.LENGTH_SHORT).show();
+                }
                 Log.e("FacebookLogin", "Error al autenticar con Firebase", task.getException());
-                Toast.makeText(this, "Error al autenticar con Facebook", Toast.LENGTH_SHORT).show();
             }
         });
     }

@@ -19,19 +19,12 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.bumptech.glide.Glide;
 import com.google.android.libraries.places.api.Places;
-import com.google.android.libraries.places.api.model.Place;
-import com.google.android.libraries.places.widget.Autocomplete;
-import com.google.android.libraries.places.widget.AutocompleteActivity;
-import com.google.android.libraries.places.widget.model.AutocompleteActivityMode;
-
-import java.util.Arrays;
 
 import edu.pmdm.mortahil_fatimaimdbapp.database.DatabaseManager;
 import edu.pmdm.mortahil_fatimaimdbapp.databinding.ActivityEditUserBinding;
@@ -48,6 +41,8 @@ public class EditUserActivity extends AppCompatActivity {
     private static final int SELECT_ADDRESS_REQUEST = 1; // Declaración de la constante para manejar la dirección
     private UsersSync usersSync;
     private KeystoreManager keystoreManager;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -56,15 +51,12 @@ public class EditUserActivity extends AppCompatActivity {
         // Configuración del ViewBinding
         binding = ActivityEditUserBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
-// Obtener el ID del usuario desde SharedPreferences
+        // Obtener el ID del usuario desde SharedPreferences
         SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
         String userId = prefs.getString("USER_ID", "");
         // Sincronizar Firestore con la base de datos local
         DatabaseManager databaseManager = new DatabaseManager(this);
-        usersSync.sincronizarDesdeFirebase(userId);
-
-
-
+      //  usersSync.sincronizarDesdeFirebase(userId);
 
         // Inicializar Places API con la API Key
         if (!Places.isInitialized()) {
@@ -89,10 +81,13 @@ public class EditUserActivity extends AppCompatActivity {
         binding.selectAddressButton.setOnClickListener(v -> verificarPermisoUbicacionYAbrirSelector());
 
         // Guardar cambios
-        binding.saveUserButton.setOnClickListener(v -> guardarDatosEnLocalYNube());
-
-
-
+        binding.saveUserButton.setOnClickListener(v -> {
+            try {
+                guardarDatosEnLocalYNube();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     private void cargarDatosDesdeBaseDeDatosLocal(String userId) {
@@ -101,13 +96,18 @@ public class EditUserActivity extends AppCompatActivity {
             User usuario = databaseManager.obtenerUsuarioPorId(userId);
             if (usuario != null) {
                 // Asignar datos descifrados a los campos de la UI
+                String direccionDescifrada = keystoreManager.descifrar(usuario.getAddress());
+                String telefonoDescifrado = keystoreManager.descifrar(usuario.getPhone());
+                System.out.println(direccionDescifrada);
+                System.out.println(telefonoDescifrado);
+
                 binding.editUserName.setText(usuario.getNombre());
                 binding.editUserEmail.setText(usuario.getCorreo());
 
-                String direccionDescifrada = usuario.getAddress();
-                String telefonoDescifrado = usuario.getPhone();
+
 
                 binding.editUserAddress.setText(direccionDescifrada != null ? direccionDescifrada : "");
+
                 binding.countryCodePicker.setFullNumber(telefonoDescifrado != null ? telefonoDescifrado : "");
 
                 // Cargar imagen si está disponible
@@ -129,15 +129,14 @@ public class EditUserActivity extends AppCompatActivity {
 
 
 
-
-
-    private void guardarDatosEnLocalYNube() {
+    private void guardarDatosEnLocalYNube() throws Exception {
         String telCompleto = binding.countryCodePicker.getFullNumberWithPlus();
         String nombre = binding.editUserName.getText().toString();
         String direccion = direccionTemporal != null && !direccionTemporal.isEmpty() ? direccionTemporal : binding.editUserAddress.getText().toString();
         String imagen = imagenTemporal != null ? imagenTemporal : imagenGuardada;
 
-
+        telCompleto= keystoreManager.cifrar(telCompleto);
+        direccion=keystoreManager.cifrar(direccion);
 
         // Validar el número de teléfono
         if (!binding.countryCodePicker.isValidFullNumber()) {

@@ -106,10 +106,7 @@ public class MainActivity extends AppCompatActivity {
         System.out.println("provedorrrrr : "+idProv);
         favSync=new FavoritesSync(this,user.getUid());
 
-        //favSync.sincronizarHaciaFirestore();
-        favSync.sincronizarDesdeFirestore();
 
-        //usersSync.sincronizarHaciaFirebase();
 
 
 
