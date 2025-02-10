@@ -5,6 +5,7 @@ import android.os.Build;
 import android.util.Log;
 
 import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QuerySnapshot;
@@ -204,12 +205,8 @@ public class UsersSync {
     }
 
 
-    public void sincronizarRegistro(String userId, Map<String, Object> userData, Map<String, Object> activityLog) {
-        // Actualizamos la información principal del usuario
-        usersCollection.document(userId)
-                .set(userData, SetOptions.merge())
-                .addOnSuccessListener(aVoid -> Log.d(TAG, "Usuario sincronizado con Firebase: " + userId))
-                .addOnFailureListener(e -> Log.e(TAG, "Error al sincronizar usuario con Firebase: " + userId, e));
+    public void sincronizarRegistro(String userId, Map<String, Object> activityLog) {
+
 
         // Agregamos el registro de actividad
         usersCollection.document(userId)
@@ -218,6 +215,24 @@ public class UsersSync {
                 .addOnSuccessListener(aVoid -> Log.d(TAG, "Log de actividad sincronizado: " + userId))
                 .addOnFailureListener(e -> Log.e(TAG, "Error al sincronizar log de actividad: " + userId, e));
     }
+
+
+    public void agregarUsuarioFirebase(User usuario){
+        DocumentReference documentReference=firestore.collection(COLLECTION_USERS).document(usuario.getId());
+        Map<String, Object> mapaUsuario=new HashMap<>();
+
+        mapaUsuario.put("user_id",usuario.getId());
+        mapaUsuario.put("name",usuario.getNombre());
+        mapaUsuario.put("email",usuario.getCorreo());
+        mapaUsuario.put("address",usuario.getAddress());
+        mapaUsuario.put("phone",usuario.getPhone());
+        mapaUsuario.put("image",usuario.getImage());
+
+        documentReference.set(mapaUsuario);
+
+    }
+
+
 
 
 

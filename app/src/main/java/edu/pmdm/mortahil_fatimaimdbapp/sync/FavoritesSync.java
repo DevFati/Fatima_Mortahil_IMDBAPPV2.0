@@ -102,7 +102,6 @@ public class FavoritesSync {
                                     })
                                     .addOnFailureListener(error -> Log.e("GestorFavoritos", "Error al cargar películas para el usuario: " + idUsuario, error));
                         }
-                        Toast.makeText(context, "Se han cargado los favoritos de todos los usuarios", Toast.LENGTH_SHORT).show();
                     } else {
                         Log.w("GestorFavoritos", "No se encontraron usuarios con favoritos.");
                     }

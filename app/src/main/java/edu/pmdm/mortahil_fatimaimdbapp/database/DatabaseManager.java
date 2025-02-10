@@ -21,6 +21,7 @@ import java.util.Map;
 
 import edu.pmdm.mortahil_fatimaimdbapp.KeystoreManager;
 import edu.pmdm.mortahil_fatimaimdbapp.models.User;
+import edu.pmdm.mortahil_fatimaimdbapp.sync.UsersSync;
 
 public class DatabaseManager {
 
@@ -130,13 +131,15 @@ public class DatabaseManager {
 
 
 
-
             db.insertWithOnConflict(
                     DatabaseHelper.tablaUsers,
                     null,
                     valores,
                     SQLiteDatabase.CONFLICT_REPLACE
+
             );
+            Log.d("DatabaseManager", "Usuario guardado: " + usuario.getId() + ", imagen: " + usuario.getImage());
+
         } catch (Exception e) {
             e.printStackTrace();
         }
