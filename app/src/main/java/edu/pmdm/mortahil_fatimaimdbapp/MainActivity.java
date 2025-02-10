@@ -42,7 +42,6 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseUser user;
     private String idProv;
     private FavoritesSync favSync;
-    private UsersSync usersSync;
     private TextView navNombre,navCorreo;
     private  ImageView navFoto;
     @Override
@@ -64,7 +63,7 @@ public class MainActivity extends AppCompatActivity {
         NavigationUI.setupActionBarWithNavController(this, navController, mAppBarConfiguration);
         NavigationUI.setupWithNavController(navigationView, navController);
 
-        usersSync = new UsersSync(this);
+
 
         // Inicializar AppLifecycleManager
         AppLifecycleManager lifecycleManager = new AppLifecycleManager(this);
@@ -105,13 +104,6 @@ public class MainActivity extends AppCompatActivity {
         idProv=user.getProviderData().get(1).getProviderId();
         System.out.println("provedorrrrr : "+idProv);
         favSync=new FavoritesSync(this,user.getUid());
-
-        //favSync.sincronizarHaciaFirestore();
-        favSync.sincronizarDesdeFirestore();
-
-        //usersSync.sincronizarHaciaFirebase();
-
-
 
     }
 

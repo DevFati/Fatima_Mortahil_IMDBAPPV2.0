@@ -21,6 +21,7 @@ import java.util.Map;
 
 import edu.pmdm.mortahil_fatimaimdbapp.KeystoreManager;
 import edu.pmdm.mortahil_fatimaimdbapp.models.User;
+import edu.pmdm.mortahil_fatimaimdbapp.sync.UsersSync;
 
 public class DatabaseManager {
 
@@ -77,6 +78,12 @@ public class DatabaseManager {
         );
     }
 
+
+
+
+
+
+
     public List<Pair<String, String>> obtenerFavoritosIdsYSources(String userId) {
         List<Pair<String, String>> favoritos = new ArrayList<>();
 
@@ -116,24 +123,23 @@ public class DatabaseManager {
             valores.put(DatabaseHelper.columna_nombre, usuario.getNombre());
             valores.put(DatabaseHelper.columna_mail, usuario.getCorreo());
 
-            // Cifrar dirección y teléfono antes de guardarlos
-            if (usuario.getAddress() != null) {
-                valores.put(DatabaseHelper.columna_address, keystoreManager.cifrar(usuario.getAddress()));
-            }
-            if (usuario.getPhone() != null) {
-                valores.put(DatabaseHelper.columna_phone, keystoreManager.cifrar(usuario.getPhone()));
-            }
-
+            valores.put(DatabaseHelper.columna_address, usuario.getAddress());
+            valores.put(DatabaseHelper.columna_phone, usuario.getPhone());
             valores.put(DatabaseHelper.columna_image, usuario.getImage());
             valores.put(DatabaseHelper.columna_login_time, usuario.getUltimoLogin());
             valores.put(DatabaseHelper.columna_logout_time, usuario.getUltimoLogout());
+
+
 
             db.insertWithOnConflict(
                     DatabaseHelper.tablaUsers,
                     null,
                     valores,
                     SQLiteDatabase.CONFLICT_REPLACE
+
             );
+            Log.d("DatabaseManager", "Usuario guardado: " + usuario.getId() + ", imagen: " + usuario.getImage());
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -151,22 +157,15 @@ public class DatabaseManager {
         if (cursor != null && cursor.moveToFirst()) {
             try {
                 // Descifrar dirección y teléfono al leerlos
-                String direccion = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_address));
-                if (direccion != null) {
-                    direccion = keystoreManager.descifrar(direccion);
-                }
 
-                String telefono = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_phone));
-                if (telefono != null) {
-                    telefono = keystoreManager.descifrar(telefono);
-                }
 
                 User usuario = new User(
                         cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_user_id)),
                         cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_nombre)),
                         cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_mail)),
-                        telefono, // Número de teléfono descifrado
-                        direccion, // Dirección descifrada
+
+                        cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_address)),
+                        cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_phone)),
                         cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_image)),
                         cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_login_time)),
                         cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_logout_time))
@@ -209,23 +208,13 @@ public class DatabaseManager {
         if (cursor != null) {
             while (cursor.moveToNext()) {
                 try {
-                    // Descifrar dirección y teléfono al leerlos
-                    String direccion = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_address));
-                    if (direccion != null) {
-                        direccion = keystoreManager.descifrar(direccion);
-                    }
-
-                    String telefono = cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_phone));
-                    if (telefono != null) {
-                        telefono = keystoreManager.descifrar(telefono);
-                    }
 
                     User usuario = new User(
                             cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_user_id)),
                             cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_nombre)),
                             cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_mail)),
-                            telefono, // Número de teléfono descifrado
-                            direccion, // Dirección descifrada
+                            cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_phone)),
+                            cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_address)),
                             cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_image)),
                             cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_login_time)),
                             cursor.getString(cursor.getColumnIndexOrThrow(DatabaseHelper.columna_logout_time))
@@ -252,10 +241,10 @@ public class DatabaseManager {
                 valores.put(DatabaseHelper.columna_nombre, nombre);
             }
             if (telefono != null && !telefono.isEmpty()) {
-                valores.put(DatabaseHelper.columna_phone, keystoreManager.cifrar(telefono)); // Cifrar el teléfono
+                valores.put(DatabaseHelper.columna_phone, telefono);
             }
             if (direccion != null && !direccion.isEmpty()) {
-                valores.put(DatabaseHelper.columna_address, keystoreManager.cifrar(direccion)); // Cifrar la dirección
+                valores.put(DatabaseHelper.columna_address, direccion);
             }
             if (imagen != null && !imagen.isEmpty()) {
                 valores.put(DatabaseHelper.columna_image, imagen);
@@ -270,29 +259,17 @@ public class DatabaseManager {
             );
 
 
-            Log.d("DatabaseManager", "UserId: " + userId);
-            Log.d("DatabaseManager", "Nombre: " + nombre);
-            Log.d("DatabaseManager", "Teléfono cifrado: " + keystoreManager.cifrar(telefono));
-            Log.d("DatabaseManager", "Dirección cifrada: " + keystoreManager.cifrar(direccion));
-            Log.d("DatabaseManager", "Imagen: " + imagen);
 
             // Sincronizar con Firebase
             FirebaseFirestore firestore = FirebaseFirestore.getInstance();
             DocumentReference userRef = firestore.collection("users").document(userId);
 
             Map<String, Object> datosActualizados = new HashMap<>();
-            if (nombre != null && !nombre.isEmpty()) {
-                datosActualizados.put("name", nombre);
-            }
-            if (telefono != null && !telefono.isEmpty()) {
-                datosActualizados.put("phone", keystoreManager.cifrar(telefono)); // Sin cifrar, ya está listo para Firebase
-            }
-            if (direccion != null && !direccion.isEmpty()) {
-                datosActualizados.put("address", keystoreManager.cifrar(direccion)); // Sin cifrar, ya está listo para Firebase
-            }
-            if (imagen != null && !imagen.isEmpty()) {
-                datosActualizados.put("image", imagen);
-            }
+            if (nombre != null) datosActualizados.put("name", nombre);
+            if (telefono != null) datosActualizados.put("phone", telefono);
+            if (direccion != null) datosActualizados.put("address", direccion);
+            if (imagen != null) datosActualizados.put("image", imagen);
+
 
             userRef.set(datosActualizados, SetOptions.merge())
                     .addOnSuccessListener(aVoid -> Log.d("FirebaseUpdate", "Datos sincronizados con Firebase para el usuario: " + userId))

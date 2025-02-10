@@ -129,8 +129,8 @@ public class AppLifecycleManager implements LifecycleObserver {
         SQLiteDatabase db = databaseHelper.getWritableDatabase();
 
         try {
-            db.execSQL("INSERT OR REPLACE INTO users (user_id, name, email, login_time, logout_time) VALUES (?, ?, ?, ?, NULL)",
-                    new Object[]{user.getUid(), user.getDisplayName(), user.getEmail(), fechaActual});
+            db.execSQL("UPDATE users SET login_time = ? WHERE user_id = ?",
+                    new Object[]{ fechaActual,user.getUid()});
             Log.d(TAG, "Login registrado: " + fechaActual);
         } catch (Exception e) {
             Log.e(TAG, "Error al registrar login: " + e.getMessage(), e);
@@ -175,43 +175,20 @@ public class AppLifecycleManager implements LifecycleObserver {
 
 
     private void sincronizarRegistroConFirebase(String userId) {
-        SQLiteDatabase db = databaseHelper.getReadableDatabase();
-        Cursor cursor = null;
-
         try {
             // Consultamos el registro completo del usuario
-            cursor = db.rawQuery("SELECT user_id, name, email, login_time, logout_time FROM users WHERE user_id = ?",
-                    new String[]{userId});
-
-            if (cursor != null && cursor.moveToFirst()) {
-                String id = cursor.getString(cursor.getColumnIndexOrThrow("user_id"));
-                String name = cursor.getString(cursor.getColumnIndexOrThrow("name"));
-                String email = cursor.getString(cursor.getColumnIndexOrThrow("email"));
-                String loginTime = cursor.getString(cursor.getColumnIndexOrThrow("login_time"));
-                String logoutTime = cursor.getString(cursor.getColumnIndexOrThrow("logout_time"));
-
-                // Preparamos los datos para Firebase
-                Map<String, Object> registro = new HashMap<>();
-                registro.put("user_id", id);
-                registro.put("name", name);
-                registro.put("email", email);
-
+            User usuario=databaseManager.obtenerUsuarioPorId(userId);
                 Map<String, Object> activityLog = new HashMap<>();
-                activityLog.put("login_time", loginTime);
-                activityLog.put("logout_time", logoutTime);
+                activityLog.put("login_time", usuario.getUltimoLogin());
+                activityLog.put("logout_time", usuario.getUltimoLogout());
 
                 // Enviamos el registro a Firebase
                 UsersSync usersSync = new UsersSync(context);
-                usersSync.sincronizarRegistro(id, registro, activityLog);
+                usersSync.sincronizarRegistro(userId, activityLog);
 
-            } else {
-                Log.w(TAG, "No se encontró el registro del usuario para sincronizar: " + userId);
-            }
 
         } catch (Exception e) {
             Log.e(TAG, "Error al sincronizar el registro con Firebase: " + e.getMessage(), e);
-        } finally {
-            if (cursor != null) cursor.close();
         }
     }
 

@@ -1,17 +1,23 @@
 package edu.pmdm.mortahil_fatimaimdbapp.sync;
 
 import android.content.Context;
+import android.util.Log;
 import android.widget.Toast;
 
 import androidx.core.util.Pair;
 
+import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.SetOptions;
 
+import java.util.Collections;
 import java.util.List;
 
 import edu.pmdm.mortahil_fatimaimdbapp.database.DatabaseManager;
 import edu.pmdm.mortahil_fatimaimdbapp.models.Movie;
+import edu.pmdm.mortahil_fatimaimdbapp.models.User;
 
 public class FavoritesSync {
 
@@ -23,6 +29,13 @@ public class FavoritesSync {
     public FavoritesSync(Context context, String userId) {
         this.context = context;
         this.userId = userId;
+        this.firestore = FirebaseFirestore.getInstance();
+        this.favoritesManager = new DatabaseManager(context);
+    }
+
+    public FavoritesSync(Context context) {
+        this.context = context;
+        this.userId = "";
         this.firestore = FirebaseFirestore.getInstance();
         this.favoritesManager = new DatabaseManager(context);
     }
@@ -49,6 +62,56 @@ public class FavoritesSync {
                     Toast.makeText(context, "Error al sincronizar desde Firestore: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 });
     }
+
+    /**
+     * Sincroniza los datos de favoritos desde Firestore para todos los usuarios en la base de datos local.
+     */
+    public void cargarFavoritosDesdeFirestore() {
+        // Obtener la lista de usuarios con favoritos desde Firestore
+        firestore.collection("favorites")
+                .get()
+                .addOnSuccessListener(usuariosSnapshot -> {
+                    if (!usuariosSnapshot.isEmpty()) {
+                        Log.d("GestorFavoritos", "Se encontraron usuarios con favoritos: " + usuariosSnapshot.size());
+
+                        for (QueryDocumentSnapshot usuarioDocumento : usuariosSnapshot) {
+                            String idUsuario = usuarioDocumento.getId(); // Identificador único del usuario
+                            Log.d("GestorFavoritos", "Cargando favoritos para el usuario: " + idUsuario);
+
+
+
+                            firestore.collection("favorites").document(idUsuario).collection("movies")
+                                    .get()
+                                    .addOnSuccessListener(peliculasSnapshot -> {
+                                        if (!peliculasSnapshot.isEmpty()) {
+                                            Log.d("GestorFavoritos", "Películas encontradas para el usuario " + idUsuario + ": " + peliculasSnapshot.size());
+
+
+                                            for (QueryDocumentSnapshot peliculaDocumento : peliculasSnapshot) {
+                                                String idPelicula = peliculaDocumento.getId();
+                                                String fuenteApi = peliculaDocumento.getString("api");
+
+
+                                                // Guardar la película en la base de datos local
+                                                favoritesManager.agregarFavorito(idPelicula, idUsuario, fuenteApi);
+                                                Log.d("GestorFavoritos", "Pelicula agregada a favoritos: " + idPelicula);
+                                            }
+                                        } else {
+                                            Log.d("GestorFavoritos", "No se encontraron películas para el usuario: " + idUsuario);
+                                        }
+                                    })
+                                    .addOnFailureListener(error -> Log.e("GestorFavoritos", "Error al cargar películas para el usuario: " + idUsuario, error));
+                        }
+                    } else {
+                        Log.w("GestorFavoritos", "No se encontraron usuarios con favoritos.");
+                    }
+                })
+                .addOnFailureListener(error -> Log.e("GestorFavoritos", "Error al obtener la lista de usuarios de Firestore", error));
+    }
+
+
+
+
 
     /**
      * Sincronizamos los datos de favoritos desde la base de datos local a Firestore lo hemos usado la primera vez para cargar la bbdd al firestore
@@ -97,7 +160,9 @@ public class FavoritesSync {
     /**
      * Añade un favorito tanto a Firestore como a la base de datos local.
      */
-    public void agregarFavorito(Movie movie) {
+    public void agregarFavorito(Movie movie,String user) {
+        DocumentReference documentoUsuario = firestore.collection("favorites").document(user);
+        documentoUsuario.set(Collections.singletonMap("existe",true), SetOptions.merge());
         // Agregar a Firestore
         firestore.collection("favorites")
                 .document(userId)

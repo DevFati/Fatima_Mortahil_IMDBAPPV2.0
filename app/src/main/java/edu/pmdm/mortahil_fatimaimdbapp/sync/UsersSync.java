@@ -5,6 +5,8 @@ import android.os.Build;
 import android.util.Log;
 
 import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.SetOptions;
@@ -38,18 +40,16 @@ public class UsersSync {
     public void sincronizarHaciaFirebase() {
         for (User user : databaseManager.obtenerTodosLosUsuarios()) {
             try {
-                // Validar y cifrar campos sensibles
-                String addressCifrado = user.getAddress() != null ? keystoreManager.cifrar(user.getAddress()) : "";
-                String phoneCifrado = user.getPhone() != null ? keystoreManager.cifrar(user.getPhone()) : "";
-                String imageCifrada = user.getImage() != null ? keystoreManager.cifrar(user.getImage()) : "";
+
 
                 Map<String, Object> userData = new HashMap<>();
                 userData.put("user_id", user.getId());
                 userData.put("name", user.getNombre() != null ? user.getNombre() : "");
                 userData.put("email", user.getCorreo() != null ? user.getCorreo() : "");
-                userData.put("address", addressCifrado);
-                userData.put("phone", phoneCifrado);
-                userData.put("image", imageCifrada);
+                userData.put("address", user.getAddress() != null ? user.getAddress() : "");
+                userData.put("phone", user.getPhone() != null ? user.getPhone() : "");
+                userData.put("image", user.getImage() != null ? user.getImage() : "");
+
 
                 Map<String, Object> activityLog = new HashMap<>();
                 activityLog.put("login_time", user.getUltimoLogin() != null ? user.getUltimoLogin() : "");
@@ -74,7 +74,7 @@ public class UsersSync {
     }
 
 
-    // Sincroniza los datos desde Firebase hacia la base de datos local
+    // Sincroniza los datos desde Firebase hacia la base de datos local de un solo usuario
     public void sincronizarDesdeFirebase(String userId) {
         usersCollection.document(userId).get()
                 .addOnSuccessListener(documentSnapshot -> {
@@ -104,6 +104,71 @@ public class UsersSync {
                 })
                 .addOnFailureListener(e -> Log.e("UsersSync", "Error al obtener datos de Firebase", e));
     }
+    // Sincroniza todos los usuarios desde Firebase hacia la base de datos local
+    public void sincronizarTodosDesdeFirebase() {
+        usersCollection.get()
+                .addOnSuccessListener(querySnapshot -> {
+                    if (!querySnapshot.isEmpty()) {
+                        for (DocumentSnapshot documentSnapshot : querySnapshot.getDocuments()) {
+                            try {
+                                // Obtener los datos del usuario desde Firestore
+                                String userId = documentSnapshot.getId();
+                                String nombre = documentSnapshot.getString("name");
+                                String correo = documentSnapshot.getString("email");
+                                String direccion = documentSnapshot.getString("address");
+                                String telefono = documentSnapshot.getString("phone");
+                                String imagen = documentSnapshot.getString("image");
+
+                                // Validar campos necesarios
+                                if (userId != null ) {
+                                    // Verificar si el usuario ya existe en la base local
+                                    User usuarioExistente = databaseManager.obtenerUsuarioPorId(userId);
+
+                                    if (usuarioExistente == null) {
+                                        // Si no existe, lo crea
+                                        User nuevoUsuario = new User(
+                                                userId,
+                                                nombre,
+                                                correo,
+                                                direccion != null ? direccion : "",
+                                                telefono != null ? telefono : "",
+                                                imagen != null ? imagen : "",
+                                                "", // Último login (vacío inicialmente)
+                                                ""  // Último logout (vacío inicialmente)
+                                        );
+                                        databaseManager.guardarUsuario(nuevoUsuario);
+                                        Log.d("UsersSync", "Usuario creado: " + userId);
+                                    } else {
+                                        // Si existe, lo actualiza
+                                        databaseManager.actualizarDatosUsuario(
+                                                userId,
+                                                nombre,
+                                                telefono != null ? telefono : "",
+                                                direccion != null ? direccion : "",
+                                                imagen != null ? imagen : ""
+                                        );
+                                        Log.d("UsersSync", "Usuario actualizado: " + userId);
+                                    }
+                                } else {
+                                    Log.w("UsersSync", "Datos incompletos para usuario: " + userId);
+                                }
+                            } catch (Exception e) {
+                                Log.e("UsersSync", "Error al sincronizar usuario desde Firebase", e);
+                            }
+                        }
+                        Log.d("UsersSync", "Sincronización completada para todos los usuarios.");
+                    } else {
+                        Log.w("UsersSync", "No hay usuarios en Firebase para sincronizar.");
+                    }
+                })
+                .addOnFailureListener(e -> Log.e("UsersSync", "Error al obtener usuarios desde Firebase", e));
+    }
+
+
+
+
+
+
 
 
 
@@ -140,12 +205,8 @@ public class UsersSync {
     }
 
 
-    public void sincronizarRegistro(String userId, Map<String, Object> userData, Map<String, Object> activityLog) {
-        // Actualizamos la información principal del usuario
-        usersCollection.document(userId)
-                .set(userData, SetOptions.merge())
-                .addOnSuccessListener(aVoid -> Log.d(TAG, "Usuario sincronizado con Firebase: " + userId))
-                .addOnFailureListener(e -> Log.e(TAG, "Error al sincronizar usuario con Firebase: " + userId, e));
+    public void sincronizarRegistro(String userId, Map<String, Object> activityLog) {
+
 
         // Agregamos el registro de actividad
         usersCollection.document(userId)
@@ -154,6 +215,24 @@ public class UsersSync {
                 .addOnSuccessListener(aVoid -> Log.d(TAG, "Log de actividad sincronizado: " + userId))
                 .addOnFailureListener(e -> Log.e(TAG, "Error al sincronizar log de actividad: " + userId, e));
     }
+
+
+    public void agregarUsuarioFirebase(User usuario){
+        DocumentReference documentReference=firestore.collection(COLLECTION_USERS).document(usuario.getId());
+        Map<String, Object> mapaUsuario=new HashMap<>();
+
+        mapaUsuario.put("user_id",usuario.getId());
+        mapaUsuario.put("name",usuario.getNombre());
+        mapaUsuario.put("email",usuario.getCorreo());
+        mapaUsuario.put("address",usuario.getAddress());
+        mapaUsuario.put("phone",usuario.getPhone());
+        mapaUsuario.put("image",usuario.getImage());
+
+        documentReference.set(mapaUsuario);
+
+    }
+
+
 
 
 

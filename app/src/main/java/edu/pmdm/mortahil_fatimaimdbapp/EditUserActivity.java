@@ -19,24 +19,23 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.bumptech.glide.Glide;
 import com.google.android.libraries.places.api.Places;
-import com.google.android.libraries.places.api.model.Place;
-import com.google.android.libraries.places.widget.Autocomplete;
-import com.google.android.libraries.places.widget.AutocompleteActivity;
-import com.google.android.libraries.places.widget.model.AutocompleteActivityMode;
 
-import java.util.Arrays;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import edu.pmdm.mortahil_fatimaimdbapp.database.DatabaseManager;
 import edu.pmdm.mortahil_fatimaimdbapp.databinding.ActivityEditUserBinding;
 import edu.pmdm.mortahil_fatimaimdbapp.models.User;
 import edu.pmdm.mortahil_fatimaimdbapp.sync.UsersSync;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class EditUserActivity extends AppCompatActivity {
 
@@ -48,6 +47,8 @@ public class EditUserActivity extends AppCompatActivity {
     private static final int SELECT_ADDRESS_REQUEST = 1; // Declaración de la constante para manejar la dirección
     private UsersSync usersSync;
     private KeystoreManager keystoreManager;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -56,15 +57,12 @@ public class EditUserActivity extends AppCompatActivity {
         // Configuración del ViewBinding
         binding = ActivityEditUserBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
-// Obtener el ID del usuario desde SharedPreferences
+        // Obtener el ID del usuario desde SharedPreferences
         SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
         String userId = prefs.getString("USER_ID", "");
         // Sincronizar Firestore con la base de datos local
         DatabaseManager databaseManager = new DatabaseManager(this);
-        usersSync.sincronizarDesdeFirebase(userId);
-
-
-
+      //  usersSync.sincronizarDesdeFirebase(userId);
 
         // Inicializar Places API con la API Key
         if (!Places.isInitialized()) {
@@ -89,10 +87,13 @@ public class EditUserActivity extends AppCompatActivity {
         binding.selectAddressButton.setOnClickListener(v -> verificarPermisoUbicacionYAbrirSelector());
 
         // Guardar cambios
-        binding.saveUserButton.setOnClickListener(v -> guardarDatosEnLocalYNube());
-
-
-
+        binding.saveUserButton.setOnClickListener(v -> {
+            try {
+                guardarDatosEnLocalYNube();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
     private void cargarDatosDesdeBaseDeDatosLocal(String userId) {
@@ -101,13 +102,18 @@ public class EditUserActivity extends AppCompatActivity {
             User usuario = databaseManager.obtenerUsuarioPorId(userId);
             if (usuario != null) {
                 // Asignar datos descifrados a los campos de la UI
+                String direccionDescifrada = keystoreManager.descifrar(usuario.getAddress());
+                String telefonoDescifrado = keystoreManager.descifrar(usuario.getPhone());
+                imagenGuardada=usuario.getImage();
+
+
                 binding.editUserName.setText(usuario.getNombre());
                 binding.editUserEmail.setText(usuario.getCorreo());
 
-                String direccionDescifrada = usuario.getAddress();
-                String telefonoDescifrado = usuario.getPhone();
+
 
                 binding.editUserAddress.setText(direccionDescifrada != null ? direccionDescifrada : "");
+
                 binding.countryCodePicker.setFullNumber(telefonoDescifrado != null ? telefonoDescifrado : "");
 
                 // Cargar imagen si está disponible
@@ -129,21 +135,28 @@ public class EditUserActivity extends AppCompatActivity {
 
 
 
-
-
-    private void guardarDatosEnLocalYNube() {
+    private void guardarDatosEnLocalYNube() throws Exception {
         String telCompleto = binding.countryCodePicker.getFullNumberWithPlus();
         String nombre = binding.editUserName.getText().toString();
         String direccion = direccionTemporal != null && !direccionTemporal.isEmpty() ? direccionTemporal : binding.editUserAddress.getText().toString();
-        String imagen = imagenTemporal != null ? imagenTemporal : imagenGuardada;
+        String imagen;
 
-
+        if(imagenTemporal!=null && !imagenTemporal.equalsIgnoreCase("")){
+            imagen=imagenTemporal;
+        }else{
+            imagen=imagenGuardada;
+        }
+        telCompleto= keystoreManager.cifrar(telCompleto);
+        direccion=keystoreManager.cifrar(direccion);
 
         // Validar el número de teléfono
-        if (!binding.countryCodePicker.isValidFullNumber()) {
-            Toast.makeText(this, "Número de teléfono inválido", Toast.LENGTH_SHORT).show();
-            return;
+        if(!binding.editUserPhone.getText().toString().equals("")){
+            if (!binding.countryCodePicker.isValidFullNumber()) {
+                Toast.makeText(this, "Número de teléfono inválido", Toast.LENGTH_SHORT).show();
+                return;
+            }
         }
+
 
         // Guardar en SharedPreferences
         SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
@@ -300,24 +313,61 @@ public class EditUserActivity extends AppCompatActivity {
 
         builder.setPositiveButton("Cargar", (dialog, which) -> {
             String url = input.getText().toString().trim();
-            if (!url.isEmpty()) {
-                Glide.with(this)
-                        .load(url)
-                        .placeholder(R.drawable.baseline_account_box_24)
-                        .error(R.drawable.baseline_account_box_24) // Si la URL es incorrecta, se usa imagen por defecto
-                        .into(binding.userImageView);
+            if (!url.isEmpty() && esUrlValida(url)) {
+                verificarYMostrarImagen(url);
 
-                if (esUrlValida(url)) {
-                    imagenTemporal = url; // Guardar solo si es válida
-                } else {
-                    imagenTemporal = ""; // Si es inválida, no se modifica la imagen guardada
-                }
+            }else{
+                Toast.makeText(this, "URL no es válida.", Toast.LENGTH_SHORT).show();
+
             }
         });
 
         builder.setNegativeButton("Cancelar", (dialog, which) -> dialog.cancel());
         builder.show();
     }
+
+    private void verificarYMostrarImagen(String url) {
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Handler handler = new Handler(Looper.getMainLooper());
+
+        executor.execute(() -> {
+            boolean esValida = esImagenValida(url);
+
+            handler.post(() -> {
+                if (esValida) {
+                    Glide.with(binding.userImageView.getContext())
+                            .load(url)
+                            .placeholder(R.drawable.baseline_account_box_24)
+                            .error(R.drawable.baseline_account_box_24)
+                            .into(binding.userImageView);
+
+                    imagenTemporal = url;
+                } else {
+                    imagenTemporal = "";
+                    Toast.makeText(binding.userImageView.getContext(), "URL no válida o no es una imagen.", Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
+    }
+
+    private boolean esImagenValida(String url) {
+        try {
+            OkHttpClient client = new OkHttpClient();
+            Request request = new Request.Builder().url(url).head().build();
+
+            Response response = client.newCall(request).execute();
+            if (!response.isSuccessful()) return false;
+
+            String contentType = response.header("Content-Type");
+            return contentType != null && contentType.startsWith("image/");
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+
+
+
 
     private boolean esUrlValida(String url) {
         return url.startsWith("http://") || url.startsWith("https://");

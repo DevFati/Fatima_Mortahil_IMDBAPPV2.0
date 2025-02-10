@@ -32,6 +32,14 @@ public class User {
         this.ultimoLogout = ultimoLogout;
     }
 
+    public User(String id, String nombre, String correo, String image) {
+        this.id = id;
+        this.nombre = nombre;
+        this.correo = correo;
+        this.image = image;
+
+    }
+
     // Getters
     public String getId() {
         return id;

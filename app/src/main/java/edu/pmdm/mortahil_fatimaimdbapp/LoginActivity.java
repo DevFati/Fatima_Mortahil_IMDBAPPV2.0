@@ -30,6 +30,7 @@ import com.facebook.FacebookException;
 import com.facebook.FacebookSdk;
 import com.facebook.GraphRequest;
 import com.facebook.appevents.AppEventsLogger;
+import com.facebook.login.LoginManager;
 import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
@@ -39,10 +40,12 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.Firebase;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FacebookAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthUserCollisionException;
 import com.google.firebase.auth.FirebaseUser;
 
 import org.json.JSONException;
@@ -50,13 +53,19 @@ import org.json.JSONException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+import edu.pmdm.mortahil_fatimaimdbapp.database.DatabaseManager;
 import edu.pmdm.mortahil_fatimaimdbapp.databinding.ActivityLogInBinding;
+import edu.pmdm.mortahil_fatimaimdbapp.models.User;
+import edu.pmdm.mortahil_fatimaimdbapp.sync.FavoritesSync;
+import edu.pmdm.mortahil_fatimaimdbapp.sync.UsersSync;
 
 public class LoginActivity extends AppCompatActivity {
     private FirebaseAuth autenticacion;
     private GoogleSignInClient clienteGoogle;
     private ActivityLogInBinding enlaceVista;
     private CallbackManager mCallbackManager;
+    private UsersSync usersSync;
+    private FavoritesSync favSync;
 
 
     @Override
@@ -76,7 +85,12 @@ public class LoginActivity extends AppCompatActivity {
         });
 
         enlaceVista.imageView2.setImageResource(R.drawable.logo);
-
+        favSync = new FavoritesSync(this);
+//favSync.sincronizarHaciaFirestore();
+        favSync.cargarFavoritosDesdeFirestore();
+        usersSync = new UsersSync(this);
+        //usersSync.sincronizarHaciaFirebase();
+        usersSync.sincronizarTodosDesdeFirebase();
 
         // Verificar si el usuario ya inició sesión porque si lo esta ya, pasa directamente a la pantalla Main
         if (FirebaseAuth.getInstance().getCurrentUser() != null) {
@@ -210,10 +224,35 @@ public class LoginActivity extends AppCompatActivity {
                     if (task.isSuccessful()) {
                         FirebaseUser usuario = autenticacion.getCurrentUser();
                         if (usuario != null) {
+
+                            String userId = usuario.getUid();
+                            DatabaseManager databaseManager = new DatabaseManager(LoginActivity.this);
+
+                            User usuarioLocal = databaseManager.obtenerUsuarioPorId(userId);
+                            String nombre;
+                            String fotoUrl;
+
+                            if (usuarioLocal != null) {
+                                // Si el usuario ya existe en la base de datos local, usamos esos datos
+                                nombre = usuarioLocal.getNombre();
+                                fotoUrl = usuarioLocal.getImage();
+                            } else {
+                                // Si no existe, usamos los datos de Google y los guardamos en la base de datos local
+                                nombre = "";
+                                fotoUrl = "";
+                                User usuarioNuevo=new User(userId, nombre, usuario.getEmail(), fotoUrl);
+                                databaseManager.guardarUsuario(usuarioNuevo);
+                                usersSync.agregarUsuarioFirebase(usuarioNuevo);
+
+                            }
+
+
+
+
                             getSharedPreferences("UserPrefs", MODE_PRIVATE).edit()
-                                    .putString("nombre", "")
+                                    .putString("nombre", nombre)
                                     .putString("correo", usuario.getEmail())
-                                    .putString("foto", "")
+                                    .putString("foto", fotoUrl)
                                     .putString("USER_ID", usuario.getUid())
                                     .apply();
 
@@ -267,17 +306,39 @@ public class LoginActivity extends AppCompatActivity {
                         if (tarea.isSuccessful()) {
                             FirebaseUser usuario = autenticacion.getCurrentUser();
                             if (usuario != null) {
-                                // Guardar datos en SharedPreferences
+                                String userId = usuario.getUid();
+                                DatabaseManager databaseManager = new DatabaseManager(LoginActivity.this);
+
+                                User usuarioLocal = databaseManager.obtenerUsuarioPorId(userId);
+                                String nombre;
+                                String fotoUrl;
+
+                                if (usuarioLocal != null) {
+                                    // Si el usuario ya existe en la base de datos local, usamos esos datos
+                                    nombre = usuarioLocal.getNombre();
+                                    fotoUrl = usuarioLocal.getImage();
+                                } else {
+                                    // Si no existe, usamos los datos de Google y los guardamos en la base de datos local
+                                    nombre = usuario.getDisplayName();
+                                    fotoUrl = (usuario.getPhotoUrl() != null) ? usuario.getPhotoUrl().toString() : "";
+                                     User usuarioNuevo=new User(userId, nombre, usuario.getEmail(), fotoUrl);
+                                    databaseManager.guardarUsuario(usuarioNuevo);
+                                    usersSync.agregarUsuarioFirebase(usuarioNuevo);
+
+                                }
+
+                                // Guardar en SharedPreferences
+                                System.out.println("fotoooUrl" +fotoUrl);
                                 getSharedPreferences("UserPrefs", MODE_PRIVATE).edit()
-                                        .putString("nombre", usuario.getDisplayName())
+                                        .putString("nombre", nombre)
                                         .putString("correo", usuario.getEmail())
-                                        .putString("foto", usuario.getPhotoUrl() != null ? usuario.getPhotoUrl().toString() : "")
-                                        .putString("USER_ID", usuario.getUid()) // Guarda el UID del usuario
+                                        .putString("foto", fotoUrl)
+                                        .putString("USER_ID", userId)
                                         .apply();
 
-                                // Redirigir a MainActivity
-                                Log.d("LoginActivity", "USER_ID guardado: " + usuario.getUid());
+                                databaseManager.close();
 
+                                // Redirigir a MainActivity
                                 Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                                 startActivity(intent);
                                 finish();
@@ -285,9 +346,10 @@ public class LoginActivity extends AppCompatActivity {
                         } else {
                             Toast.makeText(LoginActivity.this, "Error al autenticar con Firebase", Toast.LENGTH_SHORT).show();
                         }
-                    }
-                });
-    }
+                    }});
+                }
+
+
 
 
     private void handleFacebookAccessToken(AccessToken token) {
@@ -297,28 +359,38 @@ public class LoginActivity extends AppCompatActivity {
                 // Solicitud a la API Graph para obtener la información del usuario
                 GraphRequest request = GraphRequest.newMeRequest(token, (object, response) -> {
                     FirebaseUser usuario = autenticacion.getCurrentUser();
+                    DatabaseManager databaseManager = new DatabaseManager(LoginActivity.this);
 
                     try {
-                        // Verificamos y obtienemos los datos del usuario
-                        String nombre = object.optString("name", "Usuario de Facebook");
-                        String email = object.optString("email", "Correo no disponible");
+                        String userId = usuario.getUid();
+                        User usuarioLocal = databaseManager.obtenerUsuarioPorId(userId);
+                        String nombre;
+                        String fotoPerfilUrl;
 
-                        // Obténemos la URL correcta de la foto de perfil desde la respuesta JSON
-                        String fotoPerfilUrl = object.getJSONObject("picture").getJSONObject("data").getString("url");
+                        if (usuarioLocal != null) {
+                            // Si el usuario ya existe en la base de datos local, usamos esos datos
+                            nombre = usuarioLocal.getNombre();
+                            fotoPerfilUrl = usuarioLocal.getImage();
+                        } else {
+                            // Si no existe, usamos los datos de Facebook y los guardamos en la base de datos local
+                            nombre = object.optString("name", "Usuario de Facebook");
+                            fotoPerfilUrl = object.getJSONObject("picture").getJSONObject("data").getString("url");
+                            User usuarioNuevo=new User(userId, nombre, usuario.getEmail(), fotoPerfilUrl);
+                            databaseManager.guardarUsuario(usuarioNuevo);
+                            usersSync.agregarUsuarioFirebase(usuarioNuevo);
+                        }
 
-                        // Guardamos los datos en SharedPreferences
+                        // Guardar en SharedPreferences
                         getSharedPreferences("UserPrefs", MODE_PRIVATE).edit()
                                 .putString("nombre", nombre)
-                                .putString("correo", "Conectado con Facebook")
+                                .putString("correo", usuario.getEmail())
                                 .putString("foto", fotoPerfilUrl)
-                                .putString("USER_ID", usuario.getUid()) // Guarda el UID del usuario
+                                .putString("USER_ID", userId)
                                 .apply();
 
-                        Log.d("FacebookLogin", "Nombre: " + nombre);
-                        Log.d("FacebookLogin", "Correo: " + email);
-                        Log.d("FacebookLogin", "Foto personalizada: " + fotoPerfilUrl);
+                        databaseManager.close();
 
-                        // Redirige al MainActivity
+                        // Redirigir a MainActivity
                         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                         startActivity(intent);
                         finish();
@@ -328,14 +400,19 @@ public class LoginActivity extends AppCompatActivity {
                     }
                 });
 
-                // Configuramos los parámetros que  obtendremos
                 Bundle parameters = new Bundle();
                 parameters.putString("fields", "id,name,email,picture.width(500).height(500)");
                 request.setParameters(parameters);
                 request.executeAsync();
             } else {
-                Log.e("FacebookLogin", "Error al autenticar con Firebase", task.getException());
-                Toast.makeText(this, "Error al autenticar con Facebook", Toast.LENGTH_SHORT).show();
+                if (task.getException() instanceof FirebaseAuthUserCollisionException) {
+                    Toast.makeText(this, "Este correo está registrado con otro proveedor", Toast.LENGTH_SHORT).show();
+                    if (AccessToken.getCurrentAccessToken() != null) {
+                        LoginManager.getInstance().logOut();
+                    }
+                } else {
+                    Toast.makeText(this, "Error al autenticar con Facebook", Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }
