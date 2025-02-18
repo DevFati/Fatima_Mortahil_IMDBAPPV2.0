@@ -184,6 +184,11 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
+        if (!esContrasenaSegura(password)) {
+            Toast.makeText(this, "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
         autenticacion.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
@@ -206,6 +211,14 @@ public class LoginActivity extends AppCompatActivity {
                         Toast.makeText(this, "Error en el registro: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });
+    }
+    // Método para validar si la contraseña es segura
+    private boolean esContrasenaSegura(String password) {
+        return password.length() >= 8 &&
+                password.matches(".*[A-Z].*") &&  //  letra mayúscula
+                password.matches(".*[a-z].*") &&  //  letra minúscula
+                password.matches(".*\\d.*") &&    // un número
+                password.matches(".*[!@#$%^&*].*"); // un carácter especial
     }
 
 

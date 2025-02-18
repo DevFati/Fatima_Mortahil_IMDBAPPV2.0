@@ -73,13 +73,9 @@ public class FavoritesSync {
                 .addOnSuccessListener(usuariosSnapshot -> {
                     if (!usuariosSnapshot.isEmpty()) {
                         Log.d("GestorFavoritos", "Se encontraron usuarios con favoritos: " + usuariosSnapshot.size());
-
                         for (QueryDocumentSnapshot usuarioDocumento : usuariosSnapshot) {
                             String idUsuario = usuarioDocumento.getId(); // Identificador único del usuario
                             Log.d("GestorFavoritos", "Cargando favoritos para el usuario: " + idUsuario);
-
-
-
                             firestore.collection("favorites").document(idUsuario).collection("movies")
                                     .get()
                                     .addOnSuccessListener(peliculasSnapshot -> {

@@ -68,19 +68,13 @@ public class EditUserActivity extends AppCompatActivity {
         if (!Places.isInitialized()) {
             Places.initialize(getApplicationContext(), "AIzaSyAER7D-uvYpBOG3wZjz9z3AeGulqAci-OU");
         }
-
         // Configurar el CountryCodePicker para el prefijo
         binding.countryCodePicker.registerCarrierNumberEditText(binding.editUserPhone);
-
-
         // Esperar un breve tiempo para completar la sincronización
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             // Mostrar datos desde la base de datos local
             cargarDatosDesdeBaseDeDatosLocal(userId);
         }, 1000); // Espera de 1 segundo (ajustar según sea necesario)
-
-
-
 
         // Seleccionar imagen
         binding.selectImageButton.setOnClickListener(v -> mostrarDialogoSeleccionImagen());
@@ -106,11 +100,8 @@ public class EditUserActivity extends AppCompatActivity {
                 String telefonoDescifrado = keystoreManager.descifrar(usuario.getPhone());
                 imagenGuardada=usuario.getImage();
 
-
                 binding.editUserName.setText(usuario.getNombre());
                 binding.editUserEmail.setText(usuario.getCorreo());
-
-
 
                 binding.editUserAddress.setText(direccionDescifrada != null ? direccionDescifrada : "");
 
@@ -148,7 +139,6 @@ public class EditUserActivity extends AppCompatActivity {
         }
         telCompleto= keystoreManager.cifrar(telCompleto);
         direccion=keystoreManager.cifrar(direccion);
-
         // Validar el número de teléfono
         if(!binding.editUserPhone.getText().toString().equals("")){
             if (!binding.countryCodePicker.isValidFullNumber()) {
@@ -156,8 +146,6 @@ public class EditUserActivity extends AppCompatActivity {
                 return;
             }
         }
-
-
         // Guardar en SharedPreferences
         SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
         String userId = prefs.getString("USER_ID", "");
@@ -168,7 +156,6 @@ public class EditUserActivity extends AppCompatActivity {
         editor.putString("direccion", direccion);
         editor.putString("foto", imagen);
         editor.apply();
-
         // Guardar los datos en la base de datos local
         DatabaseManager databaseManager = new DatabaseManager(this);
         try {
@@ -179,8 +166,6 @@ public class EditUserActivity extends AppCompatActivity {
                     direccion,
                     imagen
             );
-
-
         } catch (Exception e) {
             e.printStackTrace();
             Toast.makeText(this, "Error al actualizar los datos", Toast.LENGTH_SHORT).show();

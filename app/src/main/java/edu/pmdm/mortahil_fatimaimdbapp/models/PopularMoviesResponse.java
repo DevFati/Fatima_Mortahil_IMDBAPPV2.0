@@ -85,7 +85,7 @@ public class PopularMoviesResponse  {
                     movies.add(new Movie(movieId, titulo, urlImagen, " ", fechaLanzamiento, Double.parseDouble(ranking),"imdb"));
                 }
             }else if(response.code()==429){ //llamadas a la api terminadas
-                Log.e("API", "Límite de solicitudes alcanzado. Cambiando API Key.");
+                Log.e("API", "Límite de solicitudes alcanzado. Cambiando API Key: "+apiKey);
                 IMDBApiClient.switchApiKey(); // Cambia a la siguiente clave
                 // Reintenta con la nueva clave
                  top10peliculas(callback);

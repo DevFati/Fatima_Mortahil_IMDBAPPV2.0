@@ -54,7 +54,7 @@ public class MovieOverviewResponse {
                         }
                     }
                 }else if(response.code()==429){ //llamadas a la api terminadas
-                    Log.e("API", "Límite de solicitudes alcanzado. Cambiando API Key.");
+                    Log.e("API", "Límite de solicitudes alcanzado. Cambiando API Key: "+apiKey);
                     IMDBApiClient.switchApiKey(); // Cambia a la siguiente clave
                     descripcionPelicula(movieId,callback); // Reintenta con la nueva clave
                     return;
