@@ -70,7 +70,7 @@ public class MovieResponse {
                 //creamos un nuevo objeto movie que devolveremos con los datos obtenidos importante pasarle como valor api "imdb"
                 return new Movie(movieId, titulo, urlImagen, null, fechaLanzamiento, calificacion,"imdb");
             }else if(response.code()==429){ //llamadas a la api terminadas
-                Log.e("API", "Límite de solicitudes alcanzado. Cambiando API Key.");
+                Log.e("API", "Límite de solicitudes alcanzado. Cambiando API Key: "+apiKey);
                 IMDBApiClient.switchApiKey(); // Cambia a la siguiente clave
                 // Reintenta con la nueva clave
                 return obtenerDetallesPelicula(movieId);

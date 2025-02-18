@@ -129,13 +129,19 @@ public class AppLifecycleManager implements LifecycleObserver {
         SQLiteDatabase db = databaseHelper.getWritableDatabase();
 
         try {
-            db.execSQL("UPDATE users SET login_time = ? WHERE user_id = ?",
-                    new Object[]{ fechaActual,user.getUid()});
-            Log.d(TAG, "Login registrado: " + fechaActual);
+            // Guardar en SQLite
+            db.execSQL("UPDATE users SET login_time = ? WHERE user_id = ?", new Object[]{fechaActual, user.getUid()});
+            Log.d(TAG, "Login registrado en SQLite: " + fechaActual);
+
+            // Guardar en Firestore con logout_time como null
+            Map<String, Object> activityLog = new HashMap<>();
+            activityLog.put("login_time", fechaActual);
+            activityLog.put("logout_time", null); // Se deja como null al iniciar sesión
+
+            usersSync.subirRegistroAFirebase(user.getUid(), activityLog);
+            Log.d(TAG, "Login registrado en Firestore con logout_time=null");
         } catch (Exception e) {
             Log.e(TAG, "Error al registrar login: " + e.getMessage(), e);
-        } finally {
-
         }
     }
 
@@ -143,23 +149,21 @@ public class AppLifecycleManager implements LifecycleObserver {
         if (user == null) return;
 
         String fechaActual = obtenerFechaActual();
-        SQLiteDatabase db = null;
+        SQLiteDatabase db = databaseHelper.getWritableDatabase();
+
         try {
-            db = databaseHelper.getWritableDatabase();
+            // Actualizar logout_time en SQLite
             db.execSQL("UPDATE users SET logout_time = ? WHERE user_id = ?", new Object[]{fechaActual, user.getUid()});
-            Log.d(TAG, "Logout registrado: " + fechaActual);
-            sincronizarRegistroConFirebase(user.getUid());
+            Log.d(TAG, "Logout registrado en SQLite: " + fechaActual);
 
-
-
+            // Buscar el último login en Firestore y actualizarlo con el logout_time
+            usersSync.actualizarLogoutFirebase(user.getUid(), fechaActual);
+            Log.d(TAG, "Logout actualizado en Firestore");
         } catch (Exception e) {
             Log.e(TAG, "Error al registrar logout: " + e.getMessage(), e);
-        } finally {
-            if (db != null) {
-
-            }
         }
     }
+
 
 
     private void actualizarEstadoSesion(boolean isLoggedIn) {

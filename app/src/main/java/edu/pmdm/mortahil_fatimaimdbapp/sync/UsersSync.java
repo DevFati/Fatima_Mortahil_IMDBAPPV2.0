@@ -189,20 +189,17 @@ public class UsersSync {
     }
 
 
-    public void subirRegistroAFirebase(User user) {
-        if (user == null) return;
+    public void subirRegistroAFirebase(String userId, Map<String, Object> activityLog) {
+        if (userId == null || userId.isEmpty()) return;
 
-        Map<String, Object> activityLog = new HashMap<>();
-        activityLog.put("login_time", user.getUltimoLogin());
-        activityLog.put("logout_time", user.getUltimoLogout());
-
-        // Subir el registro completo a Firebase
-        usersCollection.document(user.getId())
+        // Agregar nuevo registro de login en activity_log
+        usersCollection.document(userId)
                 .collection("activity_log")
                 .add(activityLog)
-                .addOnSuccessListener(aVoid -> Log.d(TAG, "Registro sincronizado con Firebase para usuario: " + user.getId()))
-                .addOnFailureListener(e -> Log.e(TAG, "Error al sincronizar registro con Firebase para usuario: " + user.getId(), e));
+                .addOnSuccessListener(documentReference -> Log.d(TAG, "Nuevo registro de login en Firestore para: " + userId))
+                .addOnFailureListener(e -> Log.e(TAG, "Error al subir registro de login para usuario: " + userId, e));
     }
+
 
 
     public void sincronizarRegistro(String userId, Map<String, Object> activityLog) {
@@ -231,6 +228,31 @@ public class UsersSync {
         documentReference.set(mapaUsuario);
 
     }
+
+
+    public void actualizarLogoutFirebase(String userId, String logoutTime) {
+        if (userId == null || userId.isEmpty()) return;
+
+        CollectionReference activityLogRef = usersCollection.document(userId).collection("activity_log");
+
+        // Obtener el último login y actualizar su logout_time
+        activityLogRef.orderBy("login_time", com.google.firebase.firestore.Query.Direction.DESCENDING)
+                .limit(1)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    if (!querySnapshot.isEmpty()) {
+                        DocumentSnapshot lastLoginDoc = querySnapshot.getDocuments().get(0);
+                        lastLoginDoc.getReference().update("logout_time", logoutTime)
+                                .addOnSuccessListener(aVoid -> Log.d(TAG, "Logout actualizado en Firestore para: " + userId))
+                                .addOnFailureListener(e -> Log.e(TAG, "Error al actualizar logout en Firestore para: " + userId, e));
+                    } else {
+                        Log.w(TAG, "No se encontró un login previo para actualizar el logout en Firestore");
+                    }
+                })
+                .addOnFailureListener(e -> Log.e(TAG, "Error al obtener último login para actualizar logout en Firestore", e));
+    }
+
+
 
 
 
