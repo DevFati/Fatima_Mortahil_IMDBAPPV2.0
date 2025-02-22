@@ -138,17 +138,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void cerrarSesion() {
-
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user != null) {
             new AppLifecycleManager(this).registrarLogout(user);
         }
-
         // Cerrar sesión de Firebase
         FirebaseAuth.getInstance().signOut();
-
-
-
         // Cerrar sesión de Google
         if (idProv.equals("google.com")) {
             googleSignInClient.signOut().addOnCompleteListener(task -> {
@@ -156,7 +151,6 @@ public class MainActivity extends AppCompatActivity {
                 if (AccessToken.getCurrentAccessToken() != null) {
                     LoginManager.getInstance().logOut();
                 }
-
                 // Redirigir al usuario a la pantalla de inicio de sesión
                 Intent intent = new Intent(MainActivity.this, LoginActivity.class);
                 startActivity(intent);
@@ -167,16 +161,12 @@ public class MainActivity extends AppCompatActivity {
             if (AccessToken.getCurrentAccessToken() != null) {
                 LoginManager.getInstance().logOut();
                 System.out.println("entraaaaa ifffff ");
-
             }
-
             // Redirigir al usuario a la pantalla de inicio de sesión
             Intent intent = new Intent(MainActivity.this, LoginActivity.class);
             startActivity(intent);
-
             finish();
         }else{
-
             Intent intent = new Intent(MainActivity.this, LoginActivity.class);
             startActivity(intent);
             finish();

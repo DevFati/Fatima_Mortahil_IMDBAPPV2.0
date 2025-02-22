@@ -60,39 +60,24 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
-
     implementation(libs.firebase.auth.v2130)
     implementation(libs.play.services.auth)
     implementation(libs.glide)
     annotationProcessor(libs.compiler)
     implementation(libs.okhttp)
     implementation(libs.gson)
-
     implementation(libs.json)
-
     implementation(libs.gbutton)
-
     implementation (libs.retrofit)
     implementation (libs.converter.gson)
-
     implementation (libs.android.facebook.android.sdk)
     implementation (libs.appcompat)
     implementation (libs.material.v180)
     implementation (libs.android.facebook.android.sdk)
-
-
-
     implementation (libs.lifecycle.runtime)
-
-
-
-
-
-    implementation ("com.google.android.libraries.places:places:2.6.0")
-    implementation ("com.google.android.gms:play-services-maps:18.1.0")
-
-
-    implementation ("com.hbb20:ccp:2.5.1")
+    implementation (libs.places)
+    implementation (libs.play.services.maps)
+    implementation (libs.ccp)
 
 
 

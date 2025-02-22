@@ -70,10 +70,7 @@ public class LoginActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
-
         enlaceVista = ActivityLogInBinding.inflate(getLayoutInflater());
-
         super.onCreate(savedInstanceState);
         FacebookSdk.sdkInitialize(getApplicationContext());
         EdgeToEdge.enable(this);
@@ -83,7 +80,6 @@ public class LoginActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
-
         enlaceVista.imageView2.setImageResource(R.drawable.logo);
         favSync = new FavoritesSync(this);
 //favSync.sincronizarHaciaFirestore();
@@ -100,17 +96,14 @@ public class LoginActivity extends AppCompatActivity {
             finish();
             return; // Salimos de onCreate para que no cargue más cosas de esta actividad
         }
-
         // Configurar FirebaseAuth
         autenticacion = FirebaseAuth.getInstance();
-
         // Configurar GoogleSignInClient
         GoogleSignInOptions opciones = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.client_id)) // el ID esta en strings.xml
                 .requestEmail()
                 .build();
         clienteGoogle = GoogleSignIn.getClient(this, opciones);
-
         // Configurar el botón de inicio de sesión
         enlaceVista.signIn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -119,39 +112,29 @@ public class LoginActivity extends AppCompatActivity {
                 lanzadorResultadoActividad.launch(intentInicioSesion);
             }
         });
-
-
         // Inicializar el SDK de Facebook
-
         AppEventsLogger.activateApp(getApplication());
         mCallbackManager = CallbackManager.Factory.create();
-
         LoginButton loginButton = enlaceVista.loginButtonFacebook;
         loginButton.setReadPermissions("email", "public_profile");
-
         loginButton.registerCallback(mCallbackManager, new FacebookCallback<LoginResult>() {
             @Override
             public void onSuccess(LoginResult loginResult) {
                 handleFacebookAccessToken(loginResult.getAccessToken());
             }
-
             @Override
             public void onCancel() {
                 Toast.makeText(LoginActivity.this, "Inicio de sesión cancelado", Toast.LENGTH_SHORT).show();
             }
-
             @Override
             public void onError(FacebookException error) {
                 Toast.makeText(LoginActivity.this, "Error al iniciar sesión con Facebook: " + error.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
-
-
         try {
             PackageInfo info = getPackageManager().getPackageInfo(
                     getPackageName(),
                     PackageManager.GET_SIGNATURES);
-
             for (Signature signature : info.signatures) {
                 MessageDigest md = MessageDigest.getInstance("SHA");
                 md.update(signature.toByteArray());
@@ -162,14 +145,10 @@ public class LoginActivity extends AppCompatActivity {
         } catch (PackageManager.NameNotFoundException | NoSuchAlgorithmException e) {
             e.printStackTrace();
         }
-
-
         //Botón de registro
         enlaceVista.registerButton.setOnClickListener(v -> registroMail());
-
         // Botón de Inicio de Sesión
         enlaceVista.loginButton.setOnClickListener(v -> loginMail());
-
     }
 
     //Lo que hago aqui es el registro por mail, despues de que el usuario meta los datso correctamente, le logueamos directamente
@@ -194,24 +173,43 @@ public class LoginActivity extends AppCompatActivity {
                     if (task.isSuccessful()) {
                         FirebaseUser usuario = autenticacion.getCurrentUser();
                         if (usuario != null) {
+                            String userId = usuario.getUid();
+                            String nombre = "";  // Nombre vacío al registrar
+                            String fotoUrl = ""; // Foto vacía por defecto
+
+                            // Instanciar la base de datos local y Firebase sync
+                            DatabaseManager databaseManager = new DatabaseManager(LoginActivity.this);
+                            usersSync = new UsersSync(LoginActivity.this);
+
+                            // Crear usuario localmente y en Firebase
+                            User usuarioNuevo = new User(userId, nombre, usuario.getEmail(), fotoUrl);
+                            databaseManager.guardarUsuario(usuarioNuevo);
+                            usersSync.agregarUsuarioFirebase(usuarioNuevo);
+
                             // Guardar datos en SharedPreferences
                             getSharedPreferences("UserPrefs", MODE_PRIVATE).edit()
-                                    .putString("nombre", "")
-                                    .putString("correo", usuario.getEmail() != null ? usuario.getEmail() : email)
-                                    .putString("foto", "")
-                                    .putString("USER_ID", usuario.getUid())
+                                    .putString("nombre", nombre)
+                                    .putString("correo", usuario.getEmail())
+                                    .putString("foto", fotoUrl)
+                                    .putString("USER_ID", userId)
                                     .apply();
 
+                            Log.d("Registro", "Usuario registrado correctamente: " + email);
+
                             Toast.makeText(this, "Registro exitoso", Toast.LENGTH_SHORT).show();
+
+                            // Redirigir a MainActivity
                             Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                             startActivity(intent);
                             finish();
                         }
                     } else {
+                        Log.e("Registro", "Error en el registro: " + task.getException().getMessage());
                         Toast.makeText(this, "Error en el registro: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });
     }
+
     // Método para validar si la contraseña es segura
     private boolean esContrasenaSegura(String password) {
         return password.length() >= 8 &&
@@ -240,7 +238,7 @@ public class LoginActivity extends AppCompatActivity {
 
                             String userId = usuario.getUid();
                             DatabaseManager databaseManager = new DatabaseManager(LoginActivity.this);
-
+                            usersSync=new UsersSync(this);
                             User usuarioLocal = databaseManager.obtenerUsuarioPorId(userId);
                             String nombre;
                             String fotoUrl;
@@ -321,6 +319,7 @@ public class LoginActivity extends AppCompatActivity {
                             if (usuario != null) {
                                 String userId = usuario.getUid();
                                 DatabaseManager databaseManager = new DatabaseManager(LoginActivity.this);
+                                usersSync = new UsersSync(LoginActivity.this); // Asegurar inicialización
 
                                 User usuarioLocal = databaseManager.obtenerUsuarioPorId(userId);
                                 String nombre;
@@ -373,6 +372,7 @@ public class LoginActivity extends AppCompatActivity {
                 GraphRequest request = GraphRequest.newMeRequest(token, (object, response) -> {
                     FirebaseUser usuario = autenticacion.getCurrentUser();
                     DatabaseManager databaseManager = new DatabaseManager(LoginActivity.this);
+                    usersSync = new UsersSync(LoginActivity.this); // Asegurar inicialización
 
                     try {
                         String userId = usuario.getUid();
@@ -396,7 +396,7 @@ public class LoginActivity extends AppCompatActivity {
                         // Guardar en SharedPreferences
                         getSharedPreferences("UserPrefs", MODE_PRIVATE).edit()
                                 .putString("nombre", nombre)
-                                .putString("correo", usuario.getEmail())
+                                .putString("correo", "Conectado con Facebook")
                                 .putString("foto", fotoPerfilUrl)
                                 .putString("USER_ID", userId)
                                 .apply();

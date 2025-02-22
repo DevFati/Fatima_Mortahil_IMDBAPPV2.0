@@ -215,6 +215,7 @@ public class UsersSync {
 
 
     public void agregarUsuarioFirebase(User usuario){
+        FirebaseFirestore firestore = FirebaseFirestore.getInstance();
         DocumentReference documentReference=firestore.collection(COLLECTION_USERS).document(usuario.getId());
         Map<String, Object> mapaUsuario=new HashMap<>();
 
